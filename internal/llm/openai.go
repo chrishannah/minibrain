@@ -12,7 +12,7 @@ import (
 	"os"
 	"strings"
 
-	"minibrain/internal/userconfig"
+	"github.com/chrishannah/minibrain/internal/userconfig"
 )
 
 type responsesRequest struct {

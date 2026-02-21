@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"minibrain/internal/llm"
+	"github.com/chrishannah/minibrain/internal/llm"
 )
 
 func RunStream(prompt string, cfg Config, onDelta func(string)) (Result, error) {

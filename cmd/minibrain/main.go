@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"minibrain/internal/agent"
-	"minibrain/internal/userconfig"
+	"github.com/chrishannah/minibrain/internal/agent"
+	"github.com/chrishannah/minibrain/internal/userconfig"
 )
 
 func main() {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"minibrain/internal/agent"
+	"github.com/chrishannah/minibrain/internal/agent"
 )
 
 func runAgentStream(prompt string, onDelta func(string)) (agent.Result, error) {

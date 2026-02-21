@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	"minibrain/internal/userconfig"
+	"github.com/chrishannah/minibrain/internal/userconfig"
 )
 
 func currentModel() string {

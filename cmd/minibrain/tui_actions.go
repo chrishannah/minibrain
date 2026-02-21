@@ -6,7 +6,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"minibrain/internal/agent"
+	"github.com/chrishannah/minibrain/internal/agent"
 )
 
 func (m *tuiModel) appendAction(text string) {

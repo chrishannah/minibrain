@@ -1,4 +1,4 @@
-module minibrain
+module github.com/chrishannah/minibrain
 
 go 1.24.2
 

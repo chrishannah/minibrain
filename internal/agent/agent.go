@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"minibrain/internal/llm"
+	"github.com/chrishannah/minibrain/internal/llm"
 )
 
 func Run(prompt string, cfg Config) (Result, error) {

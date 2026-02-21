@@ -8,8 +8,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 
-	"minibrain/internal/agent"
-	"minibrain/internal/userconfig"
+	"github.com/chrishannah/minibrain/internal/agent"
+	"github.com/chrishannah/minibrain/internal/userconfig"
 )
 
 type commandItem struct {

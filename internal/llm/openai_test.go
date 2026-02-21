@@ -3,7 +3,7 @@ package llm
 import (
 	"testing"
 
-	"minibrain/internal/userconfig"
+	"github.com/chrishannah/minibrain/internal/userconfig"
 )
 
 func TestLoadAPIKeyFromEnv(t *testing.T) {

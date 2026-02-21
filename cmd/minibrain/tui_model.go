@@ -10,7 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 
-	"minibrain/internal/agent"
+	"github.com/chrishannah/minibrain/internal/agent"
 )
 
 const (

@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"minibrain/internal/agent"
-	"minibrain/internal/userconfig"
+	"github.com/chrishannah/minibrain/internal/agent"
+	"github.com/chrishannah/minibrain/internal/userconfig"
 )
 
 type configOptions struct {
