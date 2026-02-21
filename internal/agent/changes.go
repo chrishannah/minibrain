@@ -1,0 +1,205 @@
+package agent
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+)
+
+func ParseWriteBlocks(s string) []WriteOp {
+	var writes []WriteOp
+	lines := strings.Split(s, "\n")
+	for i := 0; i < len(lines); i++ {
+		line := strings.TrimSpace(lines[i])
+		if !strings.HasPrefix(line, "WRITE ") && !strings.HasPrefix(line, "EDIT ") {
+			continue
+		}
+		path := strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(line, "WRITE "), "EDIT "))
+		if path == "" {
+			continue
+		}
+		if i+1 >= len(lines) || !strings.HasPrefix(strings.TrimSpace(lines[i+1]), "```") {
+			continue
+		}
+		i += 2
+		var content []string
+		for ; i < len(lines); i++ {
+			if strings.HasPrefix(strings.TrimSpace(lines[i]), "```") {
+				break
+			}
+			content = append(content, lines[i])
+		}
+		writes = append(writes, WriteOp{Path: path, Content: strings.Join(content, "\n")})
+	}
+	return writes
+}
+
+func ParseDeleteLines(s string) []DeleteOp {
+	var deletes []DeleteOp
+	lines := strings.Split(s, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "DELETE ") {
+			continue
+		}
+		path := strings.TrimSpace(strings.TrimPrefix(line, "DELETE "))
+		if path == "" {
+			continue
+		}
+		deletes = append(deletes, DeleteOp{Path: path})
+	}
+	return deletes
+}
+
+func ParseReadLines(s string) []string {
+	var reads []string
+	lines := strings.Split(s, "\n")
+	for _, line := range lines {
+		line := strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "READ ") {
+			continue
+		}
+		path := strings.TrimSpace(strings.TrimPrefix(line, "READ "))
+		if path == "" {
+			continue
+		}
+		reads = append(reads, path)
+	}
+	return reads
+}
+
+func ParsePatchBlocks(s string) []PatchOp {
+	var patches []PatchOp
+	lines := strings.Split(s, "\n")
+	for i := 0; i < len(lines); i++ {
+		line := strings.TrimSpace(lines[i])
+		if !strings.HasPrefix(line, "PATCH ") {
+			continue
+		}
+		path := strings.TrimSpace(strings.TrimPrefix(line, "PATCH "))
+		if path == "" {
+			continue
+		}
+		if i+1 >= len(lines) || !strings.HasPrefix(strings.TrimSpace(lines[i+1]), "```") {
+			continue
+		}
+		i += 2
+		var content []string
+		for ; i < len(lines); i++ {
+			if strings.HasPrefix(strings.TrimSpace(lines[i]), "```") {
+				break
+			}
+			content = append(content, lines[i])
+		}
+		patches = append(patches, PatchOp{Path: path, Patch: strings.Join(content, "\n")})
+	}
+	return patches
+}
+
+func ApplyWrites(root string, writes []WriteOp) []WriteOp {
+	var applied []WriteOp
+	for _, w := range writes {
+		clean, err := safeRelPath(w.Path)
+		if err != nil {
+			continue
+		}
+		p := filepath.Join(root, clean)
+		if err := ensureDir(filepath.Dir(p)); err != nil {
+			continue
+		}
+		if err := os.WriteFile(p, []byte(w.Content), 0644); err != nil {
+			continue
+		}
+		applied = append(applied, WriteOp{Path: clean, Content: w.Content})
+	}
+	return applied
+}
+
+func ApplyDeletes(root string, deletes []DeleteOp) []DeleteOp {
+	var applied []DeleteOp
+	for _, d := range deletes {
+		clean, err := safeRelPath(d.Path)
+		if err != nil {
+			continue
+		}
+		p := filepath.Join(root, clean)
+		if err := os.Remove(p); err != nil {
+			continue
+		}
+		applied = append(applied, DeleteOp{Path: clean})
+	}
+	return applied
+}
+
+func ApplyPatches(root string, patches []PatchOp) []PatchOp {
+	var applied []PatchOp
+	for _, p := range patches {
+		clean, err := safeRelPath(p.Path)
+		if err != nil {
+			continue
+		}
+		abs := filepath.Join(root, clean)
+		b, err := os.ReadFile(abs)
+		if err != nil {
+			continue
+		}
+		updated, ok := applyUnifiedPatch(string(b), p.Patch)
+		if !ok {
+			continue
+		}
+		if err := os.WriteFile(abs, []byte(updated), 0644); err != nil {
+			continue
+		}
+		applied = append(applied, PatchOp{Path: clean, Patch: p.Patch})
+	}
+	return applied
+}
+
+func FormatWritesSummary(writes []WriteOp) string {
+	return FormatWritesSummaryWithTitle("Writes", writes)
+}
+
+func FormatDeletesSummary(deletes []DeleteOp) string {
+	return FormatDeletesSummaryWithTitle("Deletes", deletes)
+}
+
+func FormatPatchesSummary(patches []PatchOp) string {
+	return FormatPatchesSummaryWithTitle("Patches", patches)
+}
+
+func FormatWritesSummaryWithTitle(title string, writes []WriteOp) string {
+	if len(writes) == 0 {
+		return "\n## " + title + "\n(none)\n"
+	}
+	var b strings.Builder
+	b.WriteString("\n## " + title + "\n")
+	for _, w := range writes {
+		b.WriteString("- " + w.Path + " (" + fmt.Sprintf("%d", len(w.Content)) + " bytes)\n")
+	}
+	return b.String()
+}
+
+func FormatDeletesSummaryWithTitle(title string, deletes []DeleteOp) string {
+	if len(deletes) == 0 {
+		return "\n## " + title + "\n(none)\n"
+	}
+	var b strings.Builder
+	b.WriteString("\n## " + title + "\n")
+	for _, d := range deletes {
+		b.WriteString("- " + d.Path + "\n")
+	}
+	return b.String()
+}
+
+func FormatPatchesSummaryWithTitle(title string, patches []PatchOp) string {
+	if len(patches) == 0 {
+		return "\n## " + title + "\n(none)\n"
+	}
+	var b strings.Builder
+	b.WriteString("\n## " + title + "\n")
+	for _, p := range patches {
+		b.WriteString("- " + p.Path + "\n")
+	}
+	return b.String()
+}
