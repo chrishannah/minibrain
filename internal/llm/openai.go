@@ -68,7 +68,7 @@ func CallOpenAI(ctx context.Context, model, developerMsg, userMsg string) (strin
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -130,7 +130,7 @@ func CallOpenAIStream(ctx context.Context, model, developerMsg, userMsg string, 
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		b, _ := io.ReadAll(resp.Body)

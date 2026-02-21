@@ -65,7 +65,7 @@ func WritePrefrontalHeader(path, prompt string, mentions []string, refs []FileRe
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	_, err = f.WriteString(b.String())
 	return err
 }
@@ -82,6 +82,6 @@ func AppendPrefrontal(path, content string) {
 	if err != nil {
 		return
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	_, _ = f.WriteString(content)
 }

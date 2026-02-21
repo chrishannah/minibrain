@@ -113,7 +113,7 @@ func ListRelevantFiles(root, prompt string, maxFiles int) ([]string, bool) {
 
 func promptTokens(prompt string) []string {
 	parts := strings.FieldsFunc(strings.ToLower(prompt), func(r rune) bool {
-		return !(r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '_' || r == '-' || r == '.')
+		return !isTokenChar(r)
 	})
 	seen := map[string]struct{}{}
 	var out []string
@@ -128,6 +128,10 @@ func promptTokens(prompt string) []string {
 		out = append(out, p)
 	}
 	return out
+}
+
+func isTokenChar(r rune) bool {
+	return (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' || r == '-' || r == '.'
 }
 
 func scorePath(path string, tokens []string) int {
