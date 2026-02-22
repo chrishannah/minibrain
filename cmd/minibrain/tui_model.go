@@ -248,13 +248,22 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		if readIgnored && (len(msg.res.ProposedWrites) > 0 || len(msg.res.ProposedDeletes) > 0 || len(msg.res.ProposedPatches) > 0) {
+			m.appendAction("CHANGES BLOCKED: request files with READ <path> lines first.")
+			m.appendAction("Use /retry to try again.")
+			m.stats = msg.res.Memory
+			m.usage = usageFromConfig()
+			return m, nil
+		}
+		if readIgnored {
+			m.appendAction("MODEL MUST USE READ <path> LINES ONLY. Use /retry.")
+			m.stats = msg.res.Memory
+			m.usage = usageFromConfig()
+			return m, nil
+		}
 		m.appendRunResult(msg.res)
 		m.stats = msg.res.Memory
 		m.usage = usageFromConfig()
-		if readIgnored && (len(msg.res.ProposedWrites) > 0 || len(msg.res.ProposedDeletes) > 0 || len(msg.res.ProposedPatches) > 0) {
-			m.appendAction("CHANGES BLOCKED: request files with READ <path> lines first.")
-			return m, nil
-		}
 		if !msg.res.Applied && (len(msg.res.ProposedWrites) > 0 || len(msg.res.ProposedDeletes) > 0 || len(msg.res.ProposedPatches) > 0) {
 			m.pendingWrites = msg.res.ProposedWrites
 			m.pendingDeletes = msg.res.ProposedDeletes
