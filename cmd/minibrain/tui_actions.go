@@ -36,28 +36,6 @@ func (m *tuiModel) appendText(text string) {
 	m.refreshViewport()
 }
 
-func (m *tuiModel) appendStream(delta string) {
-	if delta == "" {
-		return
-	}
-	if len(m.history) > 0 && m.history[len(m.history)-1].kind == "assistant_stream" {
-		m.history[len(m.history)-1].text += delta
-	} else {
-		m.history = append(m.history, historyEntry{text: delta, kind: "assistant_stream"})
-	}
-	m.refreshViewport()
-}
-
-func (m *tuiModel) clearStream() {
-	for i := len(m.history) - 1; i >= 0; i-- {
-		if m.history[i].kind == "assistant_stream" {
-			m.history = append(m.history[:i], m.history[i+1:]...)
-			break
-		}
-	}
-	m.refreshViewport()
-}
-
 func (m *tuiModel) appendSecondary(text string) {
 	if strings.TrimSpace(text) == "" {
 		return

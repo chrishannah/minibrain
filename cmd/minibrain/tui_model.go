@@ -31,7 +31,6 @@ type memMsg struct {
 }
 
 type streamMsg struct {
-	delta string
 	done  bool
 	res   agent.Result
 	err   error
