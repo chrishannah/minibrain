@@ -84,10 +84,17 @@ func ParsePatchBlocks(s string) []PatchOp {
 		if i+1 >= len(lines) {
 			continue
 		}
-		next := strings.TrimSpace(lines[i+1])
+		j := i + 1
+		for j < len(lines) && strings.TrimSpace(lines[j]) == "" {
+			j++
+		}
+		if j >= len(lines) {
+			continue
+		}
+		next := strings.TrimSpace(lines[j])
 		// Prefer fenced patch blocks.
 		if strings.HasPrefix(next, "```") {
-			i += 2
+			i = j + 1
 			var content []string
 			for ; i < len(lines); i++ {
 				if strings.HasPrefix(strings.TrimSpace(lines[i]), "```") {
@@ -100,7 +107,7 @@ func ParsePatchBlocks(s string) []PatchOp {
 		}
 		// Fallback: accept raw unified diff without fences.
 		if strings.HasPrefix(next, "@@") || strings.HasPrefix(next, "--- ") || strings.HasPrefix(next, "+++ ") {
-			i++
+			i = j
 			var content []string
 			for ; i < len(lines); i++ {
 				trimmed := strings.TrimSpace(lines[i])

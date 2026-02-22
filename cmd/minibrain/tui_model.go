@@ -215,6 +215,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.res = &msg.res
 		readReq := agent.ParseReadLines(msg.res.LLMOutput)
+		readIgnored := false
 		if len(readReq) > 0 && m.denyReadAll {
 			m.appendAction("READ DENIED (session)")
 			m.appendRunResult(msg.res)
@@ -239,6 +240,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		} else if mentionsReadInProse(msg.res.LLMOutput) {
 			m.appendAction("READ REQUEST IGNORED: use READ <path> lines only.")
+			readIgnored = true
 		}
 
 		if choice := parseChoiceBlock(msg.res.LLMOutput); choice != nil {
@@ -249,6 +251,10 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.appendRunResult(msg.res)
 		m.stats = msg.res.Memory
 		m.usage = usageFromConfig()
+		if readIgnored && (len(msg.res.ProposedWrites) > 0 || len(msg.res.ProposedDeletes) > 0 || len(msg.res.ProposedPatches) > 0) {
+			m.appendAction("CHANGES BLOCKED: request files with READ <path> lines first.")
+			return m, nil
+		}
 		if !msg.res.Applied && (len(msg.res.ProposedWrites) > 0 || len(msg.res.ProposedDeletes) > 0 || len(msg.res.ProposedPatches) > 0) {
 			m.pendingWrites = msg.res.ProposedWrites
 			m.pendingDeletes = msg.res.ProposedDeletes
