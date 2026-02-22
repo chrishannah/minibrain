@@ -132,6 +132,14 @@ func normalizePermissionResponse(s string) string {
 	return v
 }
 
+func readOnlyPrompt(original string) string {
+	trim := strings.TrimSpace(original)
+	if trim == "" {
+		return "Respond only with READ <path> lines. No other text."
+	}
+	return "You requested file reads in prose. Respond only with READ <path> lines, no other text.\n\nOriginal request:\n" + trim
+}
+
 func mentionsReadInProse(s string) bool {
 	lower := strings.ToLower(s)
 	if !strings.Contains(lower, "read") {

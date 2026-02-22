@@ -248,15 +248,15 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		if readIgnored && (len(msg.res.ProposedWrites) > 0 || len(msg.res.ProposedDeletes) > 0 || len(msg.res.ProposedPatches) > 0) {
+		if readIgnored {
+			if m.readRequestDepth < 1 {
+				m.readRequestDepth++
+				m.appendAction("READ REQUEST IGNORED; requesting READ <path> lines.")
+				m.running = true
+				return m, startAgentStream(&m, readOnlyPrompt(m.lastPrompt), m.allowReadAll, m.allowWriteAll && !m.denyWriteAll, nil)
+			}
 			m.appendAction("CHANGES BLOCKED: request files with READ <path> lines first.")
 			m.appendAction("Use /retry to try again.")
-			m.stats = msg.res.Memory
-			m.usage = usageFromConfig()
-			return m, nil
-		}
-		if readIgnored {
-			m.appendAction("MODEL MUST USE READ <path> LINES ONLY. Use /retry.")
 			m.stats = msg.res.Memory
 			m.usage = usageFromConfig()
 			return m, nil
