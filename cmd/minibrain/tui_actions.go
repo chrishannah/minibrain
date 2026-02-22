@@ -85,16 +85,16 @@ func (m *tuiModel) appendRunResult(res agent.Result) {
 		}
 	}
 	for _, w := range res.AppliedWrites {
-		m.appendAction("WRITE: " + w.Path)
+		m.appendAction(formatAction(ActionWrite, w.Path))
 	}
 	for _, d := range res.AppliedDeletes {
-		m.appendAction("DELETE: " + d.Path)
+		m.appendAction(formatAction(ActionDelete, d.Path))
 	}
 	for _, p := range res.AppliedPatches {
-		m.appendAction("PATCH: " + p.Path)
+		m.appendAction(formatAction(ActionPatch, p.Path))
 	}
 	if res.Condensed {
-		m.appendAction("MEMORY CONDENSED")
+		m.appendAction(formatAction(ActionMemory, "CONDENSED"))
 	}
 }
 

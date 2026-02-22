@@ -215,7 +215,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.running = false
 		if msg.err != nil {
 			m.err = msg.err
-			m.appendAction("ERROR: " + msg.err.Error())
+			m.appendAction(formatAction(ActionError, msg.err.Error()))
 			m.appendAction("Type /retry to try again.")
 			return m, nil
 		}
@@ -265,7 +265,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, startAgentStream(&m, m.lastPrompt, true, m.allowWriteAll && !m.denyWriteAll, mentions)
 		}
 		if len(readReq) > 0 && m.denyReadAll {
-			m.appendAction("READ DENIED (session)")
+			m.appendAction(formatAction(ActionReadDenied, "session"))
 			m.appendRunResult(msg.res)
 			m.stats = msg.res.Memory
 			return m, nil
@@ -309,6 +309,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(patchPaths) > 0 {
 				if m.allowReadAll && !m.patchReadRerun {
 					m.patchReadRerun = true
+					m.appendAction("READ: " + strings.Join(patchPaths, ", "))
 					m.lastReadPaths = patchPaths
 					m.running = true
 					return m, startAgentStream(&m, m.lastPrompt, true, m.allowWriteAll && !m.denyWriteAll, patchPaths)
@@ -316,6 +317,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if !m.allowReadAll && !m.denyReadAll {
 					m.pendingPrompt = m.lastPrompt
 					m.pendingReadPaths = patchPaths
+					m.appendAction(formatAction(ActionReadRequest, "files needed for patches"))
 					m.appendPermission("READ FILES FOR PATCHES? Choose an option:")
 					m.appendChoice("read", "Choose:", []string{"/yes allow for session", "/no deny for session", "/always always allow"})
 					return m, nil
@@ -347,8 +349,8 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 			}
-			m.appendAction("CHANGES BLOCKED: request files with READ <path> lines first.")
-			m.appendAction("Use /retry to try again.")
+			m.appendAction(formatAction(ActionChangesBlocked, "request files with READ <path> lines first"))
+			m.appendAction(formatAction(ActionInfo, "Use /retry to try again"))
 			m.stats = msg.res.Memory
 			m.usage = usageFromConfig()
 			return m, nil
@@ -376,7 +378,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.running = false
 			m.err = msg.err
 			m.clearStream()
-			m.appendAction("ERROR: " + msg.err.Error())
+			m.appendAction(formatAction(ActionError, msg.err.Error()))
 			m.appendAction("Type /retry to try again.")
 			return m, nil
 		}
@@ -395,7 +397,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.running = false
 		if msg.err != nil {
 			m.err = msg.err
-			m.appendAction("ERROR: " + msg.err.Error())
+			m.appendAction(formatAction(ActionError, msg.err.Error()))
 			return m, nil
 		}
 		m.stats = msg.stats
@@ -403,7 +405,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.action != "" {
 			m.appendAction(msg.action)
 		} else if msg.condensed {
-			m.appendAction("MEMORY CONDENSED")
+			m.appendAction(formatAction(ActionMemory, "CONDENSED"))
 		}
 		return m, nil
 	}

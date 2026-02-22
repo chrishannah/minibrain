@@ -80,7 +80,7 @@ func runMemoryCmd(prompt string) tea.Cmd {
 				return memMsg{err: err}
 			}
 			stats, _ := agent.GetMemoryStats(cfg.BrainDir, cfg.NeoPath, cfg.PrefrontalPath)
-			return memMsg{action: "MEMORY CONDENSED", stats: stats, condensed: true}
+			return memMsg{action: formatAction(ActionMemory, "CONDENSED"), stats: stats, condensed: true}
 		}
 	default:
 		return func() tea.Msg {
@@ -152,12 +152,12 @@ func mentionsReadInProse(s string) bool {
 
 func handleRetry(m *tuiModel) tea.Cmd {
 	if m.lastPrompt == "" {
-		m.appendAction("No previous prompt to retry.")
+		m.appendAction(formatAction(ActionInfo, "No previous prompt to retry"))
 		return nil
 	}
 	m.running = true
 	m.err = nil
-	m.appendAction("Retrying...")
+	m.appendAction(formatAction(ActionInfo, "Retrying"))
 	m.appendUser(m.lastPrompt)
 	return startAgentStream(m, m.lastPrompt, m.lastAllowRead, m.allowWriteAll && !m.denyWriteAll, m.lastReadPaths)
 }
@@ -174,7 +174,7 @@ func handleApplyCommand(m *tuiModel, cmd string) tea.Cmd {
 		m.projectCfg.AllowWriteAlways = true
 		m.projectCfg.DenyWriteAlways = false
 		if err := saveProjectConfig(m); err != nil {
-			m.appendAction("ERROR: " + err.Error())
+			m.appendAction(formatAction(ActionError, err.Error()))
 		}
 		return applyPending(m, true)
 	case "/deny":
@@ -184,7 +184,7 @@ func handleApplyCommand(m *tuiModel, cmd string) tea.Cmd {
 		m.pendingPrefrontal = ""
 		m.allowWriteAll = false
 		m.denyWriteAll = true
-		m.appendAction("CHANGES DENIED (session)")
+		m.appendAction(formatAction(ActionChangesDenied, "session"))
 		return nil
 	case "/deny-always":
 		m.allowWriteAll = false
@@ -196,9 +196,9 @@ func handleApplyCommand(m *tuiModel, cmd string) tea.Cmd {
 		m.projectCfg.AllowWriteAlways = false
 		m.projectCfg.DenyWriteAlways = true
 		if err := saveProjectConfig(m); err != nil {
-			m.appendAction("ERROR: " + err.Error())
+			m.appendAction(formatAction(ActionError, err.Error()))
 		}
-		m.appendAction("CHANGES DENIED (always)")
+		m.appendAction(formatAction(ActionChangesDenied, "always"))
 		return nil
 	default:
 		return nil
@@ -207,12 +207,12 @@ func handleApplyCommand(m *tuiModel, cmd string) tea.Cmd {
 
 func applyPending(m *tuiModel, always bool) tea.Cmd {
 	if len(m.pendingWrites) == 0 && len(m.pendingDeletes) == 0 && len(m.pendingPatches) == 0 {
-		m.appendAction("No pending changes.")
+		m.appendAction(formatAction(ActionInfo, "No pending changes"))
 		return nil
 	}
 	root, err := os.Getwd()
 	if err != nil {
-		m.appendAction("ERROR: " + err.Error())
+		m.appendAction(formatAction(ActionError, err.Error()))
 		return nil
 	}
 	appliedWrites := agent.ApplyWrites(root, m.pendingWrites)
@@ -224,19 +224,19 @@ func applyPending(m *tuiModel, always bool) tea.Cmd {
 		agent.AppendPrefrontal(m.pendingPrefrontal, agent.FormatPatchesSummary(appliedPatches))
 	}
 	for _, w := range appliedWrites {
-		m.appendAction("WRITE: " + w.Path)
+		m.appendAction(formatAction(ActionWrite, w.Path))
 	}
 	for _, d := range appliedDeletes {
-		m.appendAction("DELETE: " + d.Path)
+		m.appendAction(formatAction(ActionDelete, d.Path))
 	}
 	for _, p := range appliedPatches {
-		m.appendAction("PATCH: " + p.Path)
+		m.appendAction(formatAction(ActionPatch, p.Path))
 	}
 	for _, p := range failedPatches {
-		m.appendAction("PATCH FAILED: " + p.Path + " (" + p.Reason + ")")
+		m.appendAction(formatAction(ActionPatchFailed, p.Path+" ("+p.Reason+")"))
 	}
 	if always {
-		m.appendAction("CHANGES AUTO-APPLY ENABLED")
+		m.appendAction(formatAction(ActionChangesAuto, ""))
 	}
 	m.pendingWrites = nil
 	m.pendingDeletes = nil
@@ -394,7 +394,7 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 			m.running = true
 			p := m.pendingPrompt
 			m.pendingPrompt = ""
-			m.appendAction("READ APPROVED (session)")
+			m.appendAction(formatAction(ActionReadApproved, "session"))
 			m.appendUser(p)
 			if len(m.pendingReadPaths) > 0 {
 				paths := m.pendingReadPaths
@@ -417,12 +417,12 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 			m.denyReadAll = false
 			m.projectCfg.AllowReadAlways = true
 			if err := saveProjectConfig(m); err != nil {
-				m.appendAction("ERROR: " + err.Error())
+				m.appendAction(formatAction(ActionError, err.Error()))
 			}
 			m.running = true
 			p := m.pendingPrompt
 			m.pendingPrompt = ""
-			m.appendAction("READ ALWAYS APPROVED")
+			m.appendAction(formatAction(ActionReadAlways, ""))
 			m.appendUser(p)
 			if len(m.pendingReadPaths) > 0 {
 				paths := m.pendingReadPaths
@@ -443,7 +443,7 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 		case "/no":
 			m.allowReadAll = false
 			m.denyReadAll = true
-			m.appendAction("READ DENIED (session)")
+			m.appendAction(formatAction(ActionReadDenied, "session"))
 			m.pendingPrompt = ""
 			m.pendingReadPaths = nil
 			m.readRequestDepth = 0
@@ -458,18 +458,18 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 	if strings.HasPrefix(prompt, "/") {
 		cmd := strings.ToLower(strings.TrimSpace(prompt))
 		if cmd == "/yes" || cmd == "/no" || cmd == "/always" {
-			m.appendAction("No pending permission request.")
+			m.appendAction(formatAction(ActionInfo, "No pending permission request"))
 			return nil
 		}
 		if strings.HasPrefix(cmd, "/model") {
 			fields := strings.Fields(prompt)
 			if len(fields) < 2 {
-				m.appendAction("MODEL: " + m.model)
+				m.appendAction(formatAction(ActionModel, m.model))
 				return nil
 			}
 			newModel := strings.TrimSpace(fields[1])
 			if newModel == "" {
-				m.appendAction("MODEL: " + m.model)
+				m.appendAction(formatAction(ActionModel, m.model))
 				return nil
 			}
 			cfg, err := userconfig.Load()
@@ -478,16 +478,16 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 			}
 			cfg.Model = newModel
 			if err := userconfig.Save(cfg); err != nil {
-				m.appendAction("ERROR: " + err.Error())
+				m.appendAction(formatAction(ActionError, err.Error()))
 				return nil
 			}
 			m.model = newModel
-			m.appendAction("MODEL SET: " + newModel)
+			m.appendAction(formatAction(ActionModel, "SET "+newModel))
 			return nil
 		}
 		if cmd == "/usage" {
 			usage := usageFromConfig()
-			m.appendAction("Usage:")
+			m.appendAction(formatAction(ActionInfo, "Usage"))
 			m.appendAction("LTM bytes: " + formatBytes(usage.LtmBytes))
 			m.appendAction("STM bytes: " + formatBytes(usage.StmBytes))
 			m.appendAction("STM context bytes: " + formatBytes(usage.StmContextBytes))
@@ -498,21 +498,21 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 		}
 		if cmd == "/actions" {
 			if m.showActions {
-				m.appendAction("ACTIONS HIDDEN")
+				m.appendAction(formatAction(ActionInfo, "Actions hidden"))
 				m.showActions = false
 			} else {
 				m.showActions = true
-				m.appendAction("ACTIONS SHOWN")
+				m.appendAction(formatAction(ActionInfo, "Actions shown"))
 			}
 			return nil
 		}
 		if cmd == "/raw" {
 			if m.showRaw {
 				m.showRaw = false
-				m.appendAction("RAW OUTPUT HIDDEN")
+				m.appendAction(formatAction(ActionRaw, "hidden"))
 			} else {
 				m.showRaw = true
-				m.appendAction("RAW OUTPUT SHOWN")
+				m.appendAction(formatAction(ActionRaw, "shown"))
 			}
 			return nil
 		}
@@ -545,7 +545,7 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 			return handleRetry(m)
 		}
 		if cmd == "/help" {
-			m.appendAction("Commands:")
+			m.appendAction(formatAction(ActionInfo, "Commands"))
 			for _, line := range helpLines() {
 				m.appendAction(line)
 			}

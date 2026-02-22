@@ -80,30 +80,53 @@ func renderHistoryLine(h historyEntry, viewportWidth int, actionStyle, secondary
 
 func actionLabel(text string) (string, string) {
 	trim := strings.TrimSpace(text)
-	upper := strings.ToUpper(trim)
+	label := ""
+	body := trim
+	if idx := strings.Index(trim, ":"); idx >= 0 {
+		label = strings.ToUpper(strings.TrimSpace(trim[:idx]))
+		body = strings.TrimSpace(trim[idx+1:])
+	}
+	upper := label
+	if upper == "" {
+		upper = strings.ToUpper(trim)
+	}
 	switch {
 	case strings.HasPrefix(upper, "READ REQUEST"):
-		return "Read request", trim
+		return "Read request", body
 	case strings.HasPrefix(upper, "READ "):
-		return "Read", trim
+		return "Read", body
+	case strings.HasPrefix(upper, "READ"):
+		return "Read", body
 	case strings.HasPrefix(upper, "WRITE "):
-		return "Write", trim
+		return "Write", body
+	case strings.HasPrefix(upper, "WRITE"):
+		return "Write", body
 	case strings.HasPrefix(upper, "DELETE "):
-		return "Delete", trim
+		return "Delete", body
+	case strings.HasPrefix(upper, "DELETE"):
+		return "Delete", body
 	case strings.HasPrefix(upper, "PATCH "):
-		return "Patch", trim
+		return "Patch", body
+	case strings.HasPrefix(upper, "PATCH"):
+		return "Patch", body
 	case strings.HasPrefix(upper, "MODEL "):
-		return "Model", trim
+		return "Model", body
+	case strings.HasPrefix(upper, "MODEL"):
+		return "Model", body
 	case strings.HasPrefix(upper, "ERROR"):
-		return "Error", trim
+		return "Error", body
 	case strings.HasPrefix(upper, "CHANGES "):
-		return "Changes", trim
+		return "Changes", body
+	case strings.HasPrefix(upper, "CHANGES"):
+		return "Changes", body
 	case strings.HasPrefix(upper, "MEMORY "):
-		return "Memory", trim
+		return "Memory", body
+	case strings.HasPrefix(upper, "MEMORY"):
+		return "Memory", body
 	case strings.HasPrefix(upper, "RAW OUTPUT"):
-		return "Raw output", trim
+		return "Raw output", body
 	default:
-		return "Info", trim
+		return "Info", body
 	}
 }
 
