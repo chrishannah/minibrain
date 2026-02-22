@@ -48,8 +48,9 @@ func renderHistoryLine(h historyEntry, viewportWidth int, actionStyle, secondary
 		if h.bold {
 			bubbleStyle = bubbleStyle.Bold(true)
 		}
-		prefix := lipgloss.NewStyle().Bold(true).Render("Action")
-		bubble := bubbleStyle.Render(prefix + ": " + h.text)
+		label, body := actionLabel(h.text)
+		prefix := lipgloss.NewStyle().Bold(true).Render(label)
+		bubble := bubbleStyle.Render(prefix + ": " + body)
 		return lipgloss.NewStyle().Width(w).Align(lipgloss.Left).Render(actionStyle.Render(bubble))
 	case "raw":
 		bubbleStyle := lipgloss.NewStyle().Width(contentWidth).Align(lipgloss.Left)
@@ -74,6 +75,35 @@ func renderHistoryLine(h historyEntry, viewportWidth int, actionStyle, secondary
 		rendered := renderMarkdown(h.text, md)
 		bubble := bubbleStyle.Render(rendered)
 		return lipgloss.NewStyle().Width(w).Align(lipgloss.Left).Render(bubble)
+	}
+}
+
+func actionLabel(text string) (string, string) {
+	trim := strings.TrimSpace(text)
+	upper := strings.ToUpper(trim)
+	switch {
+	case strings.HasPrefix(upper, "READ REQUEST"):
+		return "Read request", trim
+	case strings.HasPrefix(upper, "READ "):
+		return "Read", trim
+	case strings.HasPrefix(upper, "WRITE "):
+		return "Write", trim
+	case strings.HasPrefix(upper, "DELETE "):
+		return "Delete", trim
+	case strings.HasPrefix(upper, "PATCH "):
+		return "Patch", trim
+	case strings.HasPrefix(upper, "MODEL "):
+		return "Model", trim
+	case strings.HasPrefix(upper, "ERROR"):
+		return "Error", trim
+	case strings.HasPrefix(upper, "CHANGES "):
+		return "Changes", trim
+	case strings.HasPrefix(upper, "MEMORY "):
+		return "Memory", trim
+	case strings.HasPrefix(upper, "RAW OUTPUT"):
+		return "Raw output", trim
+	default:
+		return "Info", trim
 	}
 }
 
