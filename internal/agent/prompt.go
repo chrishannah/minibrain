@@ -93,7 +93,8 @@ func BuildDeveloperMessage(agentConfig, soul, neo, stmContext, convContext, prom
 	b.WriteString("If file contents were not provided due to permissions, ask the user to approve reading them.\n")
 	b.WriteString("If you need more context, respond with one or more lines in this form (no extra text):\n")
 	b.WriteString("READ <relative/path>\n\n")
-	b.WriteString("Do not ask for file reads in prose; only use READ lines. Requests in prose will be ignored.\n\n")
+	b.WriteString("Do not ask for file reads in prose; only use READ lines. Requests in prose will be ignored.\n")
+	b.WriteString("Never assume file contents from filenames alone. If a change depends on file contents, request READ lines and stop.\n\n")
 
 	b.WriteString("If you state that you will modify files, you must output the WRITE/EDIT/DELETE blocks in the same response.\n")
 	b.WriteString("Otherwise, respond with your plan and any questions.\n")

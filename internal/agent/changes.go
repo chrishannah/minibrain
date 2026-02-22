@@ -81,18 +81,37 @@ func ParsePatchBlocks(s string) []PatchOp {
 		if path == "" {
 			continue
 		}
-		if i+1 >= len(lines) || !strings.HasPrefix(strings.TrimSpace(lines[i+1]), "```") {
+		if i+1 >= len(lines) {
 			continue
 		}
-		i += 2
-		var content []string
-		for ; i < len(lines); i++ {
-			if strings.HasPrefix(strings.TrimSpace(lines[i]), "```") {
-				break
+		next := strings.TrimSpace(lines[i+1])
+		// Prefer fenced patch blocks.
+		if strings.HasPrefix(next, "```") {
+			i += 2
+			var content []string
+			for ; i < len(lines); i++ {
+				if strings.HasPrefix(strings.TrimSpace(lines[i]), "```") {
+					break
+				}
+				content = append(content, lines[i])
 			}
-			content = append(content, lines[i])
+			patches = append(patches, PatchOp{Path: path, Patch: strings.Join(content, "\n")})
+			continue
 		}
-		patches = append(patches, PatchOp{Path: path, Patch: strings.Join(content, "\n")})
+		// Fallback: accept raw unified diff without fences.
+		if strings.HasPrefix(next, "@@") || strings.HasPrefix(next, "--- ") || strings.HasPrefix(next, "+++ ") {
+			i++
+			var content []string
+			for ; i < len(lines); i++ {
+				trimmed := strings.TrimSpace(lines[i])
+				if strings.HasPrefix(trimmed, "PATCH ") || strings.HasPrefix(trimmed, "WRITE ") || strings.HasPrefix(trimmed, "EDIT ") || strings.HasPrefix(trimmed, "DELETE ") || strings.HasPrefix(trimmed, "READ ") {
+					i--
+					break
+				}
+				content = append(content, lines[i])
+			}
+			patches = append(patches, PatchOp{Path: path, Patch: strings.Join(content, "\n")})
+		}
 	}
 	return patches
 }
