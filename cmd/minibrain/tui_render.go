@@ -52,6 +52,18 @@ func renderHistoryLine(h historyEntry, viewportWidth int, actionStyle, secondary
 		prefix := lipgloss.NewStyle().Bold(true).Render(label)
 		bubble := bubbleStyle.Render(prefix + ": " + body)
 		return lipgloss.NewStyle().Width(w).Align(lipgloss.Left).Render(actionStyle.Render(bubble))
+	case "preview":
+		bubbleStyle := lipgloss.NewStyle().
+			Width(contentWidth).
+			Align(lipgloss.Left).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color(colorSecondary)).
+			Padding(0, 1)
+		if h.bold {
+			bubbleStyle = bubbleStyle.Bold(true)
+		}
+		bubble := bubbleStyle.Render(h.text)
+		return lipgloss.NewStyle().Width(w).Align(lipgloss.Left).Render(secondaryStyle.Render(bubble))
 	case "raw":
 		bubbleStyle := lipgloss.NewStyle().Width(contentWidth).Align(lipgloss.Left)
 		if h.bold {

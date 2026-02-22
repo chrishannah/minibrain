@@ -35,17 +35,18 @@ func listenStream(ch <-chan streamMsg) tea.Cmd {
 func startAgentStream(m *tuiModel, prompt string, allowRead, allowWrite bool, readPaths []string) tea.Cmd {
 	ch := make(chan streamMsg)
 	m.streamCh = ch
+	if len(readPaths) > 0 {
+		m.status = "Reading"
+	} else {
+		m.status = "Thinking"
+	}
 	go func() {
 		var res agent.Result
 		var err error
 		if len(readPaths) > 0 {
-			res, err = runAgentStreamWithAllowAndReads(prompt, allowRead, allowWrite, readPaths, func(delta string) {
-				ch <- streamMsg{delta: delta}
-			})
+			res, err = runAgentStreamWithAllowAndReads(prompt, allowRead, allowWrite, readPaths, nil)
 		} else {
-			res, err = runAgentStreamWithAllow(prompt, allowRead, allowWrite, func(delta string) {
-				ch <- streamMsg{delta: delta}
-			})
+			res, err = runAgentStreamWithAllow(prompt, allowRead, allowWrite, nil)
 		}
 		ch <- streamMsg{done: true, res: res, err: err}
 		close(ch)
@@ -158,6 +159,10 @@ func handleRetry(m *tuiModel) tea.Cmd {
 	m.err = nil
 	m.appendAction(formatAction(ActionInfo, "Retrying"))
 	m.appendUser(m.lastPrompt)
+	if !m.thinkingActive {
+		m.appendSecondary("Thinking...")
+		m.thinkingActive = true
+	}
 	return startAgentStream(m, m.lastPrompt, m.lastAllowRead, m.allowWriteAll && !m.denyWriteAll, m.lastReadPaths)
 }
 
@@ -181,6 +186,7 @@ func handleApplyCommand(m *tuiModel, cmd string) tea.Cmd {
 		m.pendingDeletes = nil
 		m.pendingPatches = nil
 		m.pendingPrefrontal = ""
+		m.pendingPreviewed = false
 		m.allowWriteAll = false
 		m.denyWriteAll = true
 		m.appendAction(formatAction(ActionChangesDenied, "session"))
@@ -192,6 +198,7 @@ func handleApplyCommand(m *tuiModel, cmd string) tea.Cmd {
 		m.pendingDeletes = nil
 		m.pendingPatches = nil
 		m.pendingPrefrontal = ""
+		m.pendingPreviewed = false
 		m.projectCfg.AllowWriteAlways = false
 		m.projectCfg.DenyWriteAlways = true
 		if err := saveProjectConfig(m); err != nil {
@@ -209,6 +216,7 @@ func applyPending(m *tuiModel, always bool) tea.Cmd {
 		m.appendAction(formatAction(ActionInfo, "No pending changes"))
 		return nil
 	}
+	m.status = "Writing"
 	root, err := os.Getwd()
 	if err != nil {
 		m.appendAction(formatAction(ActionError, err.Error()))
@@ -241,6 +249,8 @@ func applyPending(m *tuiModel, always bool) tea.Cmd {
 	m.pendingDeletes = nil
 	m.pendingPatches = nil
 	m.pendingPrefrontal = ""
+	m.pendingPreviewed = false
+	m.status = "Ready"
 	return nil
 }
 
@@ -378,6 +388,10 @@ func applyChoice(m *tuiModel) tea.Cmd {
 		m.lastPrompt = selected
 		m.lastAllowRead = m.allowReadAll
 		m.lastReadPaths = nil
+		if !m.thinkingActive {
+			m.appendSecondary("Thinking...")
+			m.thinkingActive = true
+		}
 		return startAgentStream(m, selected, m.allowReadAll, m.allowWriteAll && !m.denyWriteAll, nil)
 	default:
 		return nil
@@ -395,6 +409,10 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 			m.pendingPrompt = ""
 			m.appendAction(formatAction(ActionReadApproved, "session"))
 			m.appendUser(p)
+			if !m.thinkingActive {
+				m.appendSecondary("Thinking...")
+				m.thinkingActive = true
+			}
 			if len(m.pendingReadPaths) > 0 {
 				paths := m.pendingReadPaths
 				m.pendingReadPaths = nil
@@ -421,6 +439,10 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 			m.pendingPrompt = ""
 			m.appendAction(formatAction(ActionReadAlways, ""))
 			m.appendUser(p)
+			if !m.thinkingActive {
+				m.appendSecondary("Thinking...")
+				m.thinkingActive = true
+			}
 			if len(m.pendingReadPaths) > 0 {
 				paths := m.pendingReadPaths
 				m.pendingReadPaths = nil
@@ -526,6 +548,8 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 			m.patchReadRerun = false
 			m.patchFormatRetry = false
 			m.patchWriteRetry = false
+			m.pendingPreviewed = false
+			m.thinkingActive = false
 			m.choiceActive = false
 			m.choiceKind = ""
 			m.choiceIndex = 0
@@ -569,6 +593,11 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 	m.patchFormatRetry = false
 	m.patchWriteRetry = false
 	m.lastReadPaths = nil
+	m.pendingPreviewed = false
+	if !m.thinkingActive {
+		m.appendSecondary("Thinking...")
+		m.thinkingActive = true
+	}
 	return startAgentStream(m, prompt, m.allowReadAll, m.allowWriteAll && !m.denyWriteAll, nil)
 }
 

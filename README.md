@@ -104,5 +104,8 @@ Patches (`PATCH`) follow the same approval flow.
 - Short-term memory persists across runs and is condensed when large or on request.
 - Calls OpenAI Responses API, then optionally writes files if the model emits `WRITE`, `EDIT`, `DELETE`, or `PATCH` instructions.
 
+## Screenshot
+![Screenshot](resources/screenshot.png)
+
 ## License
 Apache-2.0. See `LICENSE` and `NOTICE`.

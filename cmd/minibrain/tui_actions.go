@@ -66,6 +66,18 @@ func (m *tuiModel) appendSecondary(text string) {
 	m.refreshViewport()
 }
 
+func (m *tuiModel) clearThinking() {
+	for i := len(m.history) - 1; i >= 0; i-- {
+		h := m.history[i]
+		if h.kind == "assistant_secondary" && strings.TrimSpace(h.text) == "Thinking..." {
+			m.history = append(m.history[:i], m.history[i+1:]...)
+			break
+		}
+	}
+	m.thinkingActive = false
+	m.refreshViewport()
+}
+
 func (m *tuiModel) appendUser(text string) {
 	if strings.TrimSpace(text) == "" {
 		return
@@ -118,6 +130,56 @@ func (m *tuiModel) appendRaw(text string) {
 	}
 	m.history = append(m.history, historyEntry{text: "RAW RESPONSE:\n" + text, kind: "raw"})
 	m.refreshViewport()
+}
+
+func (m *tuiModel) appendPreview(text string) {
+	if strings.TrimSpace(text) == "" {
+		return
+	}
+	m.history = append(m.history, historyEntry{text: text, kind: "preview"})
+	m.refreshViewport()
+}
+
+func formatPreviewBlock(kind, path string, lines []string) string {
+	var b strings.Builder
+	title := strings.TrimSpace(kind + " " + path)
+	if title == "" {
+		title = "Preview"
+	}
+	b.WriteString("Preview: " + title)
+	if len(lines) > 0 {
+		b.WriteString("\n")
+		for i, line := range lines {
+			if i == 0 {
+				b.WriteString(line)
+			} else {
+				b.WriteString("\n")
+				b.WriteString(line)
+			}
+		}
+	}
+	return b.String()
+}
+
+func appendChangePreview(m *tuiModel) {
+	const maxLines = 12
+	for _, p := range m.pendingPatches {
+		lines := strings.Split(p.Patch, "\n")
+		if len(lines) > maxLines {
+			lines = append(lines[:maxLines], "...")
+		}
+		m.appendPreview(formatPreviewBlock("PATCH", p.Path, lines))
+	}
+	for _, w := range m.pendingWrites {
+		lines := strings.Split(w.Content, "\n")
+		if len(lines) > maxLines {
+			lines = append(lines[:maxLines], "...")
+		}
+		m.appendPreview(formatPreviewBlock("WRITE", w.Path, lines))
+	}
+	for _, d := range m.pendingDeletes {
+		m.appendPreview(formatPreviewBlock("DELETE", d.Path, nil))
+	}
 }
 
 func (m *tuiModel) refreshViewport() {

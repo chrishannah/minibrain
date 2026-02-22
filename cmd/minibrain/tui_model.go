@@ -61,6 +61,7 @@ type tuiModel struct {
 	denyWriteAll      bool
 	pendingPrompt     string
 	model             string
+	status            string
 	lastPrompt        string
 	lastAllowRead     bool
 	lastReadPaths     []string
@@ -73,6 +74,8 @@ type tuiModel struct {
 	patchReadRerun    bool
 	patchFormatRetry  bool
 	patchWriteRetry   bool
+	pendingPreviewed  bool
+	thinkingActive    bool
 	suggestIndex      int
 	choiceActive      bool
 	choiceKind        string
@@ -120,6 +123,7 @@ func newTUIModel() tuiModel {
 		projectCfg:    perms.Project,
 		showActions:   true,
 		showRaw:       false,
+		status:        "Ready",
 	}
 	m.updateMarkdownRenderer()
 	m.refreshViewport()
@@ -212,6 +216,8 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case runMsg:
 		m.running = false
+		m.clearThinking()
+		m.status = "Ready"
 		if msg.err != nil {
 			m.err = msg.err
 			m.appendAction(formatAction(ActionError, msg.err.Error()))
@@ -230,6 +236,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if len(readReq) > 0 && !m.allowReadAll {
 			m.pendingPrompt = m.lastPrompt
 			m.pendingReadPaths = readReq
+			m.status = "Ready"
 			m.appendPermission("READ REQUEST: can I read files in this directory?")
 			m.appendChoice("read", "Choose:", []string{"/yes allow for session", "/no deny for session", "/always always allow"})
 			return m, nil
@@ -279,6 +286,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if !m.allowReadAll && !m.denyReadAll {
 					m.pendingPrompt = m.lastPrompt
 					m.pendingReadPaths = patchPaths
+					m.status = "Ready"
 					m.appendAction(formatAction(ActionReadRequest, "files needed for patches"))
 					m.appendPermission("READ FILES FOR PATCHES? Choose an option:")
 					m.appendChoice("read", "Choose:", []string{"/yes allow for session", "/no deny for session", "/always always allow"})
@@ -306,6 +314,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if !m.allowReadAll && !m.denyReadAll {
 					m.pendingPrompt = m.lastPrompt
 					m.pendingReadPaths = retryPaths
+					m.status = "Ready"
 					m.appendPermission("READ FILES FOR FULL REWRITE? Choose an option:")
 					m.appendChoice("read", "Choose:", []string{"/yes allow for session", "/no deny for session", "/always always allow"})
 					return m, nil
@@ -320,11 +329,16 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.pendingDeletes = msg.res.ProposedDeletes
 			m.pendingPatches = msg.res.ProposedPatches
 			m.pendingPrefrontal = msg.res.PrefrontalPath
+			if !m.pendingPreviewed {
+				appendChangePreview(&m)
+				m.pendingPreviewed = true
+			}
 			if m.denyWriteAll {
 				m.appendAction("CHANGES DENIED (always)")
 			} else if m.allowWriteAll {
 				return m, applyPending(&m, true)
 			} else {
+				m.status = "Ready"
 				m.appendPermission("APPLY CHANGES? Choose an option:")
 				m.appendChoice("apply", "Choose:", []string{"/apply allow for session", "/apply-always always apply", "/deny deny for session", "/deny-always always deny"})
 			}
@@ -334,18 +348,14 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.running = false
 			m.err = msg.err
-			m.clearStream()
+			m.clearThinking()
 			m.appendAction(formatAction(ActionError, msg.err.Error()))
-			m.appendAction("Type /retry to try again.")
+			m.appendAction(formatAction(ActionInfo, "Type /retry to try again"))
+			m.status = "Error"
 			return m, nil
-		}
-		if msg.delta != "" {
-			m.appendStream(msg.delta)
-			return m, listenStream(m.streamCh)
 		}
 		if msg.done {
 			m.running = false
-			m.clearStream()
 			msg2 := runMsg{res: msg.res, err: nil}
 			return m, func() tea.Msg { return msg2 }
 		}

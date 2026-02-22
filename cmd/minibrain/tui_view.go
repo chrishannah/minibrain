@@ -47,10 +47,11 @@ func asciiHeader() string {
 }
 
 func renderStatusBar(m tuiModel) string {
-	activity := "Ready"
-	if m.running {
-		activity = "Thinking..."
-	} else if m.err != nil {
+	activity := m.status
+	if strings.TrimSpace(activity) == "" {
+		activity = "Ready"
+	}
+	if m.err != nil {
 		activity = "Error"
 	}
 
