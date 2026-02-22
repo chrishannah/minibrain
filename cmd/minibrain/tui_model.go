@@ -71,6 +71,7 @@ type tuiModel struct {
 	pendingReadPaths  []string
 	readRequestDepth  int
 	readReprompted    bool
+	expectReadLines   bool
 	suggestIndex      int
 	choiceActive      bool
 	choiceKind        string
@@ -217,8 +218,37 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.res = &msg.res
+		m.appendRaw(msg.res.LLMOutput)
 		readReq := agent.ParseReadLines(msg.res.LLMOutput)
 		readIgnored := false
+		if !m.expectReadLines && mentionsReadInProse(msg.res.LLMOutput) {
+			readIgnored = true
+		}
+		if m.expectReadLines {
+			if len(readReq) == 0 {
+				m.expectReadLines = false
+				mentions := agent.ExtractFileMentions(m.lastPrompt)
+				if len(mentions) > 0 {
+					if m.allowReadAll {
+						readReq = mentions
+					} else if !m.denyReadAll {
+						m.pendingPrompt = m.lastPrompt
+						m.pendingReadPaths = mentions
+						m.appendPermission("READ FILES FROM PROMPT? Choose an option:")
+						m.appendChoice("read", "Choose:", []string{"/yes allow for session", "/no deny for session", "/always always allow"})
+						return m, nil
+					}
+				}
+				if len(readReq) == 0 {
+					m.appendAction("EXPECTED READ <path> LINES; got none.")
+					m.appendAction("Use /retry to try again.")
+					m.stats = msg.res.Memory
+					m.usage = usageFromConfig()
+					return m, nil
+				}
+			}
+			m.expectReadLines = false
+		}
 		if len(readReq) > 0 && m.denyReadAll {
 			m.appendAction("READ DENIED (session)")
 			m.appendRunResult(msg.res)
@@ -242,9 +272,6 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.running = true
 				return m, startAgentStream(&m, m.lastPrompt, true, m.allowWriteAll && !m.denyWriteAll, readReq)
 			}
-		} else if mentionsReadInProse(msg.res.LLMOutput) {
-			m.appendAction("READ REQUEST IGNORED: use READ <path> lines only.")
-			readIgnored = true
 		}
 
 		if choice := parseChoiceBlock(msg.res.LLMOutput); choice != nil {
@@ -255,10 +282,25 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if readIgnored {
 			if !m.readReprompted {
 				m.readReprompted = true
+				m.expectReadLines = true
 				m.appendAction("READ REQUEST IGNORED; requesting READ <path> lines.")
 				m.running = true
 				return m, startAgentStream(&m, readOnlyPrompt(m.lastPrompt), m.allowReadAll, m.allowWriteAll && !m.denyWriteAll, nil)
 			}
+			mentions := agent.ExtractFileMentions(m.lastPrompt)
+			if len(mentions) > 0 {
+				if m.allowReadAll {
+					readIgnored = false
+					readReq = mentions
+				} else if !m.denyReadAll {
+					m.pendingPrompt = m.lastPrompt
+					m.pendingReadPaths = mentions
+					m.appendPermission("READ FILES FROM PROMPT? Choose an option:")
+					m.appendChoice("read", "Choose:", []string{"/yes allow for session", "/no deny for session", "/always always allow"})
+					return m, nil
+				}
+			}
+			m.appendAction("READ REQUEST IGNORED: use READ <path> lines only.")
 			m.appendAction("CHANGES BLOCKED: request files with READ <path> lines first.")
 			m.appendAction("Use /retry to try again.")
 			m.stats = msg.res.Memory

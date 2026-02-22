@@ -75,10 +75,6 @@ func (m *tuiModel) appendUser(text string) {
 }
 
 func (m *tuiModel) appendRunResult(res agent.Result) {
-	if m.showRaw && res.LLMOutput != "" {
-		m.history = append(m.history, historyEntry{text: "RAW RESPONSE:\n" + res.LLMOutput, kind: "raw"})
-		m.refreshViewport()
-	}
 	if res.LLMOutput != "" {
 		thinking, final := splitThinkingFinal(res.LLMOutput)
 		if thinking != "" {
@@ -102,13 +98,24 @@ func (m *tuiModel) appendRunResult(res agent.Result) {
 	}
 }
 
+func (m *tuiModel) appendRaw(text string) {
+	if strings.TrimSpace(text) == "" {
+		return
+	}
+	m.history = append(m.history, historyEntry{text: "RAW RESPONSE:\n" + text, kind: "raw"})
+	m.refreshViewport()
+}
+
 func (m *tuiModel) refreshViewport() {
 	var b strings.Builder
-	actionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(colorSecondary))
+	actionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(colorPrimary)).Faint(true)
 	secondaryStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(colorSecondary))
 	first := true
 	for _, h := range m.history {
 		if h.kind == "action" && !m.showActions {
+			continue
+		}
+		if h.kind == "raw" && !m.showRaw {
 			continue
 		}
 		if !first {

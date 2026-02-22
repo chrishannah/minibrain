@@ -406,10 +406,12 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 				m.pendingReadPaths = nil
 				m.readRequestDepth = 0
 				m.readReprompted = false
+				m.expectReadLines = false
 				m.lastReadPaths = paths
 				return startAgentStream(m, p, true, m.allowWriteAll && !m.denyWriteAll, paths)
 			}
 			m.readReprompted = false
+			m.expectReadLines = false
 			return startAgentStream(m, p, true, m.allowWriteAll && !m.denyWriteAll, nil)
 		case "/always":
 			m.allowReadAll = true
@@ -428,10 +430,12 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 				m.pendingReadPaths = nil
 				m.readRequestDepth = 0
 				m.readReprompted = false
+				m.expectReadLines = false
 				m.lastReadPaths = paths
 				return startAgentStream(m, p, true, m.allowWriteAll && !m.denyWriteAll, paths)
 			}
 			m.readReprompted = false
+			m.expectReadLines = false
 			return startAgentStream(m, p, true, m.allowWriteAll && !m.denyWriteAll, nil)
 		case "/no":
 			m.allowReadAll = false
@@ -522,6 +526,7 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 			m.pendingPrefrontal = ""
 			m.readRequestDepth = 0
 			m.readReprompted = false
+			m.expectReadLines = false
 			m.choiceActive = false
 			m.choiceKind = ""
 			m.choiceIndex = 0
@@ -562,6 +567,7 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 	m.lastAllowRead = m.allowReadAll
 	m.readRequestDepth = 0
 	m.readReprompted = false
+	m.expectReadLines = false
 	m.lastReadPaths = nil
 	return startAgentStream(m, prompt, m.allowReadAll, m.allowWriteAll && !m.denyWriteAll, nil)
 }
