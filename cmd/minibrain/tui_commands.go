@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -142,17 +143,11 @@ func readOnlyPrompt(original string) string {
 
 func mentionsReadInProse(s string) bool {
 	lower := strings.ToLower(s)
-	if !strings.Contains(lower, "read") {
+	if strings.Contains(lower, "\nread ") || strings.HasPrefix(strings.TrimSpace(lower), "read ") {
 		return false
 	}
-	trim := strings.TrimSpace(lower)
-	if strings.HasPrefix(trim, "read ") {
-		return false
-	}
-	if strings.Contains(lower, "\nread ") {
-		return false
-	}
-	return true
+	re := regexp.MustCompile(`\bread\b`)
+	return re.MatchString(lower)
 }
 
 func handleRetry(m *tuiModel) tea.Cmd {
