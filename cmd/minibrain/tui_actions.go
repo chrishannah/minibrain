@@ -108,7 +108,7 @@ func (m *tuiModel) appendRaw(text string) {
 
 func (m *tuiModel) refreshViewport() {
 	var b strings.Builder
-	actionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(colorPrimary)).Faint(true)
+	actionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(colorPrimary))
 	secondaryStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(colorSecondary))
 	first := true
 	for _, h := range m.history {

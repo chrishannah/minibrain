@@ -264,7 +264,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if len(readReq) > 0 && m.allowReadAll {
 			if m.readRequestDepth >= 1 {
-				m.appendAction("READ REQUESTED AGAIN; ignoring to avoid loop.")
+				// avoid repeated read loops
 			} else {
 				m.readRequestDepth++
 				m.readReprompted = false
@@ -283,7 +283,6 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !m.readReprompted {
 				m.readReprompted = true
 				m.expectReadLines = true
-				m.appendAction("READ REQUEST IGNORED; requesting READ <path> lines.")
 				m.running = true
 				return m, startAgentStream(&m, readOnlyPrompt(m.lastPrompt), m.allowReadAll, m.allowWriteAll && !m.denyWriteAll, nil)
 			}
@@ -300,7 +299,6 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 			}
-			m.appendAction("READ REQUEST IGNORED: use READ <path> lines only.")
 			m.appendAction("CHANGES BLOCKED: request files with READ <path> lines first.")
 			m.appendAction("Use /retry to try again.")
 			m.stats = msg.res.Memory
