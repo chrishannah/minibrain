@@ -70,6 +70,7 @@ type tuiModel struct {
 	pendingPrefrontal string
 	pendingReadPaths  []string
 	readRequestDepth  int
+	readReprompted    bool
 	suggestIndex      int
 	choiceActive      bool
 	choiceKind        string
@@ -234,6 +235,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.appendAction("READ REQUESTED AGAIN; ignoring to avoid loop.")
 			} else {
 				m.readRequestDepth++
+				m.readReprompted = false
 				m.lastReadPaths = readReq
 				m.running = true
 				return m, startAgentStream(&m, m.lastPrompt, true, m.allowWriteAll && !m.denyWriteAll, readReq)
@@ -249,8 +251,8 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if readIgnored {
-			if m.readRequestDepth < 1 {
-				m.readRequestDepth++
+			if !m.readReprompted {
+				m.readReprompted = true
 				m.appendAction("READ REQUEST IGNORED; requesting READ <path> lines.")
 				m.running = true
 				return m, startAgentStream(&m, readOnlyPrompt(m.lastPrompt), m.allowReadAll, m.allowWriteAll && !m.denyWriteAll, nil)
