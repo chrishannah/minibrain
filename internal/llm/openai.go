@@ -28,14 +28,10 @@ type responseText struct {
 }
 
 type responseFormat struct {
-	Type       string          `json:"type"`
-	JSONSchema *responseSchema `json:"json_schema,omitempty"`
-}
-
-type responseSchema struct {
-	Name   string          `json:"name"`
-	Strict bool            `json:"strict"`
-	Schema json.RawMessage `json:"schema"`
+	Type   string          `json:"type"`
+	Name   string          `json:"name,omitempty"`
+	Strict bool            `json:"strict,omitempty"`
+	Schema json.RawMessage `json:"schema,omitempty"`
 }
 
 type responsesResponse struct {
@@ -97,12 +93,10 @@ func CallOpenAI(ctx context.Context, model, developerMsg, userMsg string) (strin
 		Input:        userMsg,
 		Text: &responseText{
 			Format: &responseFormat{
-				Type: "json_schema",
-				JSONSchema: &responseSchema{
-					Name:   "minibrain_response",
-					Strict: true,
-					Schema: schema,
-				},
+				Type:   "json_schema",
+				Name:   "minibrain_response",
+				Strict: true,
+				Schema: schema,
 			},
 		},
 	}
@@ -198,12 +192,10 @@ func CallOpenAIStream(ctx context.Context, model, developerMsg, userMsg string, 
 		Stream:       true,
 		Text: &responseText{
 			Format: &responseFormat{
-				Type: "json_schema",
-				JSONSchema: &responseSchema{
-					Name:   "minibrain_response",
-					Strict: true,
-					Schema: schema,
-				},
+				Type:   "json_schema",
+				Name:   "minibrain_response",
+				Strict: true,
+				Schema: schema,
 			},
 		},
 	}
