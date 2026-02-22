@@ -259,6 +259,7 @@ func helpLines() []string {
 		"/model  Show or set model",
 		"/usage  Show memory and token usage",
 		"/actions  Toggle action log",
+		"/raw  Toggle raw model output",
 		"/yes  Allow reading for session",
 		"/no  Deny reading for session",
 		"/always  Always allow reading",
@@ -278,6 +279,7 @@ func helpItems() []commandItem {
 		{cmd: "/model", desc: "Show or set model"},
 		{cmd: "/usage", desc: "Show memory and token usage"},
 		{cmd: "/actions", desc: "Toggle action log"},
+		{cmd: "/raw", desc: "Toggle raw model output"},
 		{cmd: "/yes", desc: "Allow reading for session"},
 		{cmd: "/no", desc: "Deny reading for session"},
 		{cmd: "/always", desc: "Always allow reading"},
@@ -494,6 +496,16 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 			} else {
 				m.showActions = true
 				m.appendAction("ACTIONS SHOWN")
+			}
+			return nil
+		}
+		if cmd == "/raw" {
+			if m.showRaw {
+				m.showRaw = false
+				m.appendAction("RAW OUTPUT HIDDEN")
+			} else {
+				m.showRaw = true
+				m.appendAction("RAW OUTPUT SHOWN")
 			}
 			return nil
 		}

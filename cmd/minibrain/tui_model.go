@@ -81,6 +81,7 @@ type tuiModel struct {
 	mdWidth           int
 	streamCh          chan streamMsg
 	showActions       bool
+	showRaw           bool
 }
 
 func runTUI() {
@@ -116,6 +117,7 @@ func newTUIModel() tuiModel {
 		choiceIndex:   0,
 		projectCfg:    perms.Project,
 		showActions:   true,
+		showRaw:       false,
 	}
 	m.updateMarkdownRenderer()
 	m.refreshViewport()
