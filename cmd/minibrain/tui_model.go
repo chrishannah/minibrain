@@ -156,15 +156,9 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.refreshViewport()
 				return m, nil
 			case tea.KeyEnter:
-				typed := strings.TrimSpace(m.input.Value())
-				if typed != "" {
-					m.input.SetValue("")
-					m.choiceActive = false
-					m.choiceKind = ""
-					return m, submitPrompt(&m, typed)
-				}
 				return m, applyChoice(&m)
 			}
+			return m, nil
 		}
 
 		suggestions := currentSuggestions(m)

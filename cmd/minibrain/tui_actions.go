@@ -23,6 +23,7 @@ func (m *tuiModel) appendChoice(kind, question string, options []string) {
 	m.choiceActive = true
 	m.choiceKind = kind
 	m.choiceIndex = 0
+	m.input.SetValue("")
 	m.history = append(m.history, historyEntry{text: question, kind: "choice", options: options, bold: true})
 	m.refreshViewport()
 }
