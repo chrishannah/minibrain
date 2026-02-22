@@ -75,8 +75,19 @@ func (m *tuiModel) appendUser(text string) {
 }
 
 func (m *tuiModel) appendRunResult(res agent.Result) {
-	if res.LLMOutput != "" {
-		thinking, final := splitThinkingFinal(res.LLMOutput)
+	raw := res.RawOutput
+	if raw == "" {
+		raw = res.LLMOutput
+	}
+	if raw != "" {
+		m.appendRaw(raw)
+	}
+	text := res.Message
+	if strings.TrimSpace(text) == "" {
+		text = res.LLMOutput
+	}
+	if text != "" {
+		thinking, final := splitThinkingFinal(text)
 		if thinking != "" {
 			m.appendSecondary(thinking)
 		}
@@ -92,6 +103,9 @@ func (m *tuiModel) appendRunResult(res agent.Result) {
 	}
 	for _, p := range res.AppliedPatches {
 		m.appendAction(formatAction(ActionPatch, p.Path))
+	}
+	for _, p := range res.FailedPatches {
+		m.appendAction(formatAction(ActionPatchFailed, p.Path+" ("+p.Reason+")"))
 	}
 	if res.Condensed {
 		m.appendAction(formatAction(ActionMemory, "CONDENSED"))

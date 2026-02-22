@@ -16,10 +16,26 @@ import (
 )
 
 type responsesRequest struct {
-	Model        string `json:"model"`
-	Instructions string `json:"instructions"`
-	Input        string `json:"input"`
-	Stream       bool   `json:"stream,omitempty"`
+	Model        string        `json:"model"`
+	Instructions string        `json:"instructions"`
+	Input        string        `json:"input"`
+	Stream       bool          `json:"stream,omitempty"`
+	Text         *responseText `json:"text,omitempty"`
+}
+
+type responseText struct {
+	Format *responseFormat `json:"format,omitempty"`
+}
+
+type responseFormat struct {
+	Type       string          `json:"type"`
+	JSONSchema *responseSchema `json:"json_schema,omitempty"`
+}
+
+type responseSchema struct {
+	Name   string          `json:"name"`
+	Strict bool            `json:"strict"`
+	Schema json.RawMessage `json:"schema"`
 }
 
 type responsesResponse struct {
@@ -46,10 +62,49 @@ func CallOpenAI(ctx context.Context, model, developerMsg, userMsg string) (strin
 		model = "gpt-4.1"
 	}
 
+	schema := []byte(`{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "read": { "type": "array", "items": { "type": "string" } },
+    "patches": { "type": "array", "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string" },
+        "diff": { "type": "string" }
+      },
+      "required": ["path", "diff"]
+    }},
+    "writes": { "type": "array", "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string" },
+        "content": { "type": "string" }
+      },
+      "required": ["path", "content"]
+    }},
+    "deletes": { "type": "array", "items": { "type": "string" } },
+    "message": { "type": "string" }
+  },
+  "required": ["read", "patches", "writes", "deletes", "message"]
+}`)
+
 	payload := responsesRequest{
 		Model:        model,
 		Instructions: developerMsg,
 		Input:        userMsg,
+		Text: &responseText{
+			Format: &responseFormat{
+				Type: "json_schema",
+				JSONSchema: &responseSchema{
+					Name:   "minibrain_response",
+					Strict: true,
+					Schema: schema,
+				},
+			},
+		},
 	}
 
 	body, err := json.Marshal(payload)
@@ -107,11 +162,50 @@ func CallOpenAIStream(ctx context.Context, model, developerMsg, userMsg string, 
 		model = "gpt-4.1"
 	}
 
+	schema := []byte(`{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "read": { "type": "array", "items": { "type": "string" } },
+    "patches": { "type": "array", "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string" },
+        "diff": { "type": "string" }
+      },
+      "required": ["path", "diff"]
+    }},
+    "writes": { "type": "array", "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string" },
+        "content": { "type": "string" }
+      },
+      "required": ["path", "content"]
+    }},
+    "deletes": { "type": "array", "items": { "type": "string" } },
+    "message": { "type": "string" }
+  },
+  "required": ["read", "patches", "writes", "deletes", "message"]
+}`)
+
 	payload := responsesRequest{
 		Model:        model,
 		Instructions: developerMsg,
 		Input:        userMsg,
 		Stream:       true,
+		Text: &responseText{
+			Format: &responseFormat{
+				Type: "json_schema",
+				JSONSchema: &responseSchema{
+					Name:   "minibrain_response",
+					Strict: true,
+					Schema: schema,
+				},
+			},
+		},
 	}
 
 	body, err := json.Marshal(payload)

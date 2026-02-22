@@ -23,12 +23,16 @@ type PatchOp struct {
 
 type Result struct {
 	LLMOutput         string
+	RawOutput         string
+	Message           string
 	ProposedWrites    []WriteOp
 	ProposedDeletes   []DeleteOp
 	ProposedPatches   []PatchOp
 	AppliedWrites     []WriteOp
 	AppliedDeletes    []DeleteOp
 	AppliedPatches    []PatchOp
+	FailedPatches     []PatchFailure
+	ReadRequests      []string
 	Applied           bool
 	PrefrontalPath    string
 	Mentions          []string

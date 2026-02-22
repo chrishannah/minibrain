@@ -87,14 +87,42 @@ func Run(prompt string, cfg Config) (Result, error) {
 	proposedWrites := ParseWriteBlocks(llmOut)
 	proposedDeletes := ParseDeleteLines(llmOut)
 	proposedPatches := ParsePatchBlocks(llmOut)
+	message := llmOut
+	readRequests := ParseReadLines(llmOut)
+	if structured, ok := ParseStructuredOutput(llmOut); ok {
+		message = structured.Message
+		readRequests = structured.Read
+		proposedWrites = nil
+		proposedDeletes = nil
+		proposedPatches = nil
+		for _, w := range structured.Writes {
+			if strings.TrimSpace(w.Path) == "" {
+				continue
+			}
+			proposedWrites = append(proposedWrites, WriteOp{Path: w.Path, Content: w.Content})
+		}
+		for _, d := range structured.Deletes {
+			if strings.TrimSpace(d) == "" {
+				continue
+			}
+			proposedDeletes = append(proposedDeletes, DeleteOp{Path: d})
+		}
+		for _, p := range structured.Patches {
+			if strings.TrimSpace(p.Path) == "" {
+				continue
+			}
+			proposedPatches = append(proposedPatches, PatchOp{Path: p.Path, Patch: p.Diff})
+		}
+	}
 	var appliedWrites []WriteOp
 	var appliedDeletes []DeleteOp
 	var appliedPatches []PatchOp
+	var failedPatches []PatchFailure
 	applied := false
 	if cfg.ApplyWrites {
 		appliedWrites = ApplyWrites(root, proposedWrites)
 		appliedDeletes = ApplyDeletes(root, proposedDeletes)
-		appliedPatches, _ = ApplyPatches(root, proposedPatches)
+		appliedPatches, failedPatches = ApplyPatches(root, proposedPatches)
 		applied = true
 	}
 
@@ -120,12 +148,16 @@ func Run(prompt string, cfg Config) (Result, error) {
 
 	return Result{
 		LLMOutput:         llmOut,
+		RawOutput:         llmOut,
+		Message:           message,
 		ProposedWrites:    proposedWrites,
 		ProposedDeletes:   proposedDeletes,
 		ProposedPatches:   proposedPatches,
 		AppliedWrites:     appliedWrites,
 		AppliedDeletes:    appliedDeletes,
 		AppliedPatches:    appliedPatches,
+		FailedPatches:     failedPatches,
+		ReadRequests:      readRequests,
 		Applied:           applied,
 		PrefrontalPath:    prefrontalPath,
 		Mentions:          mentions,
