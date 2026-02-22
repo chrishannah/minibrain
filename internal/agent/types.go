@@ -33,6 +33,7 @@ type Result struct {
 	AppliedPatches    []PatchOp
 	FailedPatches     []PatchFailure
 	ReadRequests      []string
+	PatchRetryPaths   []string
 	Applied           bool
 	PrefrontalPath    string
 	Mentions          []string

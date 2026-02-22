@@ -70,11 +70,9 @@ type tuiModel struct {
 	pendingPrefrontal string
 	pendingReadPaths  []string
 	readRequestDepth  int
-	readReprompted    bool
-	expectReadLines   bool
-	mentionReadRerun  bool
 	patchReadRerun    bool
 	patchFormatRetry  bool
+	patchWriteRetry   bool
 	suggestIndex      int
 	choiceActive      bool
 	choiceKind        string
@@ -222,49 +220,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.res = &msg.res
 		m.appendRaw(msg.res.LLMOutput)
-		readReq := agent.ParseReadLines(msg.res.LLMOutput)
-		readIgnored := false
-		if !m.expectReadLines && mentionsReadInProse(msg.res.LLMOutput) {
-			readIgnored = true
-		}
-		mentions := agent.ExtractFileMentions(m.lastPrompt)
-		if m.expectReadLines {
-			if len(readReq) == 0 {
-				m.expectReadLines = false
-				if len(mentions) > 0 {
-					if m.allowReadAll {
-						readReq = mentions
-					} else if !m.denyReadAll {
-						m.pendingPrompt = m.lastPrompt
-						m.pendingReadPaths = mentions
-						m.appendPermission("READ FILES FROM PROMPT? Choose an option:")
-						m.appendChoice("read", "Choose:", []string{"/yes allow for session", "/no deny for session", "/always always allow"})
-						return m, nil
-					}
-				}
-				if len(readReq) == 0 {
-					m.appendAction("EXPECTED READ <path> LINES; got none.")
-					m.appendAction("Use /retry to try again.")
-					m.stats = msg.res.Memory
-					m.usage = usageFromConfig()
-					return m, nil
-				}
-			}
-			m.expectReadLines = false
-		}
-		if len(readReq) == 0 && len(mentions) > 0 && !m.allowReadAll && !m.denyReadAll {
-			m.pendingPrompt = m.lastPrompt
-			m.pendingReadPaths = mentions
-			m.appendPermission("READ FILES FROM PROMPT? Choose an option:")
-			m.appendChoice("read", "Choose:", []string{"/yes allow for session", "/no deny for session", "/always always allow"})
-			return m, nil
-		}
-		if len(readReq) == 0 && len(mentions) > 0 && m.allowReadAll && !m.mentionReadRerun {
-			m.mentionReadRerun = true
-			m.lastReadPaths = mentions
-			m.running = true
-			return m, startAgentStream(&m, m.lastPrompt, true, m.allowWriteAll && !m.denyWriteAll, mentions)
-		}
+		readReq := msg.res.ReadRequests
 		if len(readReq) > 0 && m.denyReadAll {
 			m.appendAction(formatAction(ActionReadDenied, "session"))
 			m.appendRunResult(msg.res)
@@ -283,20 +239,9 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// avoid repeated read loops
 			} else {
 				m.readRequestDepth++
-				m.readReprompted = false
 				m.lastReadPaths = readReq
 				m.running = true
 				return m, startAgentStream(&m, m.lastPrompt, true, m.allowWriteAll && !m.denyWriteAll, readReq)
-			}
-		}
-
-		if len(readReq) == 0 && len(mentions) > 0 && !m.allowReadAll && !m.denyReadAll {
-			if len(msg.res.ProposedWrites) > 0 || len(msg.res.ProposedDeletes) > 0 || len(msg.res.ProposedPatches) > 0 {
-				m.pendingPrompt = m.lastPrompt
-				m.pendingReadPaths = mentions
-				m.appendPermission("READ FILES FROM PROMPT? Choose an option:")
-				m.appendChoice("read", "Choose:", []string{"/yes allow for session", "/no deny for session", "/always always allow"})
-				return m, nil
 			}
 		}
 
@@ -347,34 +292,29 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		if readIgnored {
-			if !m.readReprompted {
-				m.readReprompted = true
-				m.expectReadLines = true
-				m.running = true
-				return m, startAgentStream(&m, readOnlyPrompt(m.lastPrompt), m.allowReadAll, m.allowWriteAll && !m.denyWriteAll, nil)
-			}
-			if len(mentions) > 0 {
-				if m.allowReadAll {
-					readIgnored = false
-					readReq = mentions
-				} else if !m.denyReadAll {
-					m.pendingPrompt = m.lastPrompt
-					m.pendingReadPaths = mentions
-					m.appendPermission("READ FILES FROM PROMPT? Choose an option:")
-					m.appendChoice("read", "Choose:", []string{"/yes allow for session", "/no deny for session", "/always always allow"})
-					return m, nil
-				}
-			}
-			m.appendAction(formatAction(ActionChangesBlocked, "request files with READ <path> lines first"))
-			m.appendAction(formatAction(ActionInfo, "Use /retry to try again"))
-			m.stats = msg.res.Memory
-			m.usage = usageFromConfig()
-			return m, nil
-		}
 		m.appendRunResult(msg.res)
 		m.stats = msg.res.Memory
 		m.usage = usageFromConfig()
+		if len(msg.res.FailedPatches) > 0 && !m.patchWriteRetry {
+			var retryPaths []string
+			for _, p := range msg.res.FailedPatches {
+				if strings.TrimSpace(p.Path) != "" {
+					retryPaths = append(retryPaths, p.Path)
+				}
+			}
+			if len(retryPaths) > 0 {
+				if !m.allowReadAll && !m.denyReadAll {
+					m.pendingPrompt = m.lastPrompt
+					m.pendingReadPaths = retryPaths
+					m.appendPermission("READ FILES FOR FULL REWRITE? Choose an option:")
+					m.appendChoice("read", "Choose:", []string{"/yes allow for session", "/no deny for session", "/always always allow"})
+					return m, nil
+				}
+				m.patchWriteRetry = true
+				m.running = true
+				return m, startAgentStream(&m, patchRewritePrompt(m.lastPrompt, retryPaths), m.allowReadAll, m.allowWriteAll && !m.denyWriteAll, retryPaths)
+			}
+		}
 		if !msg.res.Applied && (len(msg.res.ProposedWrites) > 0 || len(msg.res.ProposedDeletes) > 0 || len(msg.res.ProposedPatches) > 0) {
 			m.pendingWrites = msg.res.ProposedWrites
 			m.pendingDeletes = msg.res.ProposedDeletes

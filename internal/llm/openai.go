@@ -249,9 +249,6 @@ func CallOpenAIStream(ctx context.Context, model, developerMsg, userMsg string, 
 		}
 		if delta := extractStreamDelta(payload); delta != "" {
 			out.WriteString(delta)
-			if onDelta != nil {
-				onDelta(delta)
-			}
 		}
 	}
 	if err := scanner.Err(); err != nil {

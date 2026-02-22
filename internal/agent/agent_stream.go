@@ -96,35 +96,32 @@ func RunStream(prompt string, cfg Config, onDelta func(string)) (Result, error) 
 		llmOut = out.String()
 	}
 
-	proposedWrites := ParseWriteBlocks(llmOut)
-	proposedDeletes := ParseDeleteLines(llmOut)
-	proposedPatches := ParsePatchBlocks(llmOut)
-	message := llmOut
-	readRequests := ParseReadLines(llmOut)
-	if structured, ok := ParseStructuredOutput(llmOut); ok {
-		message = structured.Message
-		readRequests = structured.Read
-		proposedWrites = nil
-		proposedDeletes = nil
-		proposedPatches = nil
-		for _, w := range structured.Writes {
-			if strings.TrimSpace(w.Path) == "" {
-				continue
-			}
-			proposedWrites = append(proposedWrites, WriteOp{Path: w.Path, Content: w.Content})
+	structured, ok := ParseStructuredOutput(llmOut)
+	if !ok {
+		return Result{RawOutput: llmOut, PrefrontalPath: prefrontalPath}, errors.New("model returned invalid JSON response")
+	}
+	message := structured.Message
+	readRequests := structured.Read
+	var proposedWrites []WriteOp
+	var proposedDeletes []DeleteOp
+	var proposedPatches []PatchOp
+	for _, w := range structured.Writes {
+		if strings.TrimSpace(w.Path) == "" {
+			continue
 		}
-		for _, d := range structured.Deletes {
-			if strings.TrimSpace(d) == "" {
-				continue
-			}
-			proposedDeletes = append(proposedDeletes, DeleteOp{Path: d})
+		proposedWrites = append(proposedWrites, WriteOp(w))
+	}
+	for _, d := range structured.Deletes {
+		if strings.TrimSpace(d) == "" {
+			continue
 		}
-		for _, p := range structured.Patches {
-			if strings.TrimSpace(p.Path) == "" {
-				continue
-			}
-			proposedPatches = append(proposedPatches, PatchOp{Path: p.Path, Patch: p.Diff})
+		proposedDeletes = append(proposedDeletes, DeleteOp{Path: d})
+	}
+	for _, p := range structured.Patches {
+		if strings.TrimSpace(p.Path) == "" {
+			continue
 		}
+		proposedPatches = append(proposedPatches, PatchOp{Path: p.Path, Patch: p.Diff})
 	}
 	var appliedWrites []WriteOp
 	var appliedDeletes []DeleteOp
@@ -159,7 +156,7 @@ func RunStream(prompt string, cfg Config, onDelta func(string)) (Result, error) 
 	stats, _ := GetMemoryStats(brainDir, neoPath, prefrontalPath)
 
 	return Result{
-		LLMOutput:         llmOut,
+		LLMOutput:         message,
 		RawOutput:         llmOut,
 		Message:           message,
 		ProposedWrites:    proposedWrites,

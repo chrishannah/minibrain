@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -133,14 +132,6 @@ func normalizePermissionResponse(s string) string {
 	return v
 }
 
-func readOnlyPrompt(original string) string {
-	trim := strings.TrimSpace(original)
-	if trim == "" {
-		return "Respond only with READ <path> lines. No other text."
-	}
-	return "You requested file reads in prose. Respond only with READ <path> lines, no other text.\n\nOriginal request:\n" + trim
-}
-
 func patchFormatPrompt(original string) string {
 	trim := strings.TrimSpace(original)
 	if trim == "" {
@@ -149,13 +140,13 @@ func patchFormatPrompt(original string) string {
 	return "Your PATCH was invalid. Return only a valid unified diff with @@ -a,b +c,d @@ hunks and context lines. No other text.\n\nOriginal request:\n" + trim
 }
 
-func mentionsReadInProse(s string) bool {
-	lower := strings.ToLower(s)
-	if strings.Contains(lower, "\nread ") || strings.HasPrefix(strings.TrimSpace(lower), "read ") {
-		return false
+func patchRewritePrompt(original string, paths []string) string {
+	trim := strings.TrimSpace(original)
+	pathList := strings.Join(paths, ", ")
+	if trim == "" {
+		return "Return JSON with full-file rewrites for these paths only: " + pathList
 	}
-	re := regexp.MustCompile(`\bread\b`)
-	return re.MatchString(lower)
+	return "Your patch failed to apply. Return JSON with full-file rewrites for these paths only: " + pathList + "\n\nOriginal request:\n" + trim
 }
 
 func handleRetry(m *tuiModel) tea.Cmd {
@@ -408,19 +399,15 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 				paths := m.pendingReadPaths
 				m.pendingReadPaths = nil
 				m.readRequestDepth = 0
-				m.readReprompted = false
-				m.expectReadLines = false
-				m.mentionReadRerun = false
 				m.patchReadRerun = false
 				m.patchFormatRetry = false
+				m.patchWriteRetry = false
 				m.lastReadPaths = paths
 				return startAgentStream(m, p, true, m.allowWriteAll && !m.denyWriteAll, paths)
 			}
-			m.readReprompted = false
-			m.expectReadLines = false
-			m.mentionReadRerun = false
 			m.patchReadRerun = false
 			m.patchFormatRetry = false
+			m.patchWriteRetry = false
 			return startAgentStream(m, p, true, m.allowWriteAll && !m.denyWriteAll, nil)
 		case "/always":
 			m.allowReadAll = true
@@ -438,19 +425,15 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 				paths := m.pendingReadPaths
 				m.pendingReadPaths = nil
 				m.readRequestDepth = 0
-				m.readReprompted = false
-				m.expectReadLines = false
-				m.mentionReadRerun = false
 				m.patchReadRerun = false
 				m.patchFormatRetry = false
+				m.patchWriteRetry = false
 				m.lastReadPaths = paths
 				return startAgentStream(m, p, true, m.allowWriteAll && !m.denyWriteAll, paths)
 			}
-			m.readReprompted = false
-			m.expectReadLines = false
-			m.mentionReadRerun = false
 			m.patchReadRerun = false
 			m.patchFormatRetry = false
+			m.patchWriteRetry = false
 			return startAgentStream(m, p, true, m.allowWriteAll && !m.denyWriteAll, nil)
 		case "/no":
 			m.allowReadAll = false
@@ -540,11 +523,9 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 			m.pendingPatches = nil
 			m.pendingPrefrontal = ""
 			m.readRequestDepth = 0
-			m.readReprompted = false
-			m.expectReadLines = false
-			m.mentionReadRerun = false
 			m.patchReadRerun = false
 			m.patchFormatRetry = false
+			m.patchWriteRetry = false
 			m.choiceActive = false
 			m.choiceKind = ""
 			m.choiceIndex = 0
@@ -584,11 +565,9 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 	m.lastPrompt = prompt
 	m.lastAllowRead = m.allowReadAll
 	m.readRequestDepth = 0
-	m.readReprompted = false
-	m.expectReadLines = false
-	m.mentionReadRerun = false
 	m.patchReadRerun = false
 	m.patchFormatRetry = false
+	m.patchWriteRetry = false
 	m.lastReadPaths = nil
 	return startAgentStream(m, prompt, m.allowReadAll, m.allowWriteAll && !m.denyWriteAll, nil)
 }

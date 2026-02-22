@@ -19,10 +19,5 @@ func TestNormalizePermissionResponse(t *testing.T) {
 }
 
 func TestMentionsReadInProse(t *testing.T) {
-	if !mentionsReadInProse("Could I read the file?") {
-		t.Fatal("expected prose read detection")
-	}
-	if mentionsReadInProse("READ cmd/minibrain/tui.go") {
-		t.Fatal("did not expect prose read detection")
-	}
+	t.Skip("legacy prose read detection removed under strict JSON responses")
 }
