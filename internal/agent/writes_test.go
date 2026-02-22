@@ -58,7 +58,7 @@ func TestParseAndApplyPatch(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "a.txt"), []byte("hello\nline2\n"), 0644); err != nil {
 		t.Fatalf("write seed: %v", err)
 	}
-	applied := ApplyPatches(root, ops)
+	applied, _ := ApplyPatches(root, ops)
 	if len(applied) != 1 {
 		t.Fatalf("expected applied patch, got %d", len(applied))
 	}

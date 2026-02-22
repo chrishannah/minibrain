@@ -106,7 +106,7 @@ func RunStream(prompt string, cfg Config, onDelta func(string)) (Result, error) 
 	if cfg.ApplyWrites {
 		appliedWrites = ApplyWrites(root, proposedWrites)
 		appliedDeletes = ApplyDeletes(root, proposedDeletes)
-		appliedPatches = ApplyPatches(root, proposedPatches)
+		appliedPatches, _ = ApplyPatches(root, proposedPatches)
 		applied = true
 	}
 

@@ -94,7 +94,7 @@ func Run(prompt string, cfg Config) (Result, error) {
 	if cfg.ApplyWrites {
 		appliedWrites = ApplyWrites(root, proposedWrites)
 		appliedDeletes = ApplyDeletes(root, proposedDeletes)
-		appliedPatches = ApplyPatches(root, proposedPatches)
+		appliedPatches, _ = ApplyPatches(root, proposedPatches)
 		applied = true
 	}
 

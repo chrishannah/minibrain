@@ -132,28 +132,38 @@ func ApplyDeletes(root string, deletes []DeleteOp) []DeleteOp {
 	return applied
 }
 
-func ApplyPatches(root string, patches []PatchOp) []PatchOp {
+type PatchFailure struct {
+	Path   string
+	Reason string
+}
+
+func ApplyPatches(root string, patches []PatchOp) ([]PatchOp, []PatchFailure) {
 	var applied []PatchOp
+	var failed []PatchFailure
 	for _, p := range patches {
 		clean, err := safeRelPath(p.Path)
 		if err != nil {
+			failed = append(failed, PatchFailure{Path: p.Path, Reason: "invalid path"})
 			continue
 		}
 		abs := filepath.Join(root, clean)
 		b, err := os.ReadFile(abs)
 		if err != nil {
+			failed = append(failed, PatchFailure{Path: clean, Reason: "read failed: " + err.Error()})
 			continue
 		}
 		updated, ok := applyUnifiedPatch(string(b), p.Patch)
 		if !ok {
+			failed = append(failed, PatchFailure{Path: clean, Reason: "patch failed to apply"})
 			continue
 		}
 		if err := os.WriteFile(abs, []byte(updated), 0644); err != nil {
+			failed = append(failed, PatchFailure{Path: clean, Reason: "write failed: " + err.Error()})
 			continue
 		}
 		applied = append(applied, PatchOp{Path: clean, Patch: p.Patch})
 	}
-	return applied
+	return applied, failed
 }
 
 func FormatWritesSummary(writes []WriteOp) string {

@@ -214,7 +214,7 @@ func applyPending(m *tuiModel, always bool) tea.Cmd {
 	}
 	appliedWrites := agent.ApplyWrites(root, m.pendingWrites)
 	appliedDeletes := agent.ApplyDeletes(root, m.pendingDeletes)
-	appliedPatches := agent.ApplyPatches(root, m.pendingPatches)
+	appliedPatches, failedPatches := agent.ApplyPatches(root, m.pendingPatches)
 	if m.pendingPrefrontal != "" {
 		agent.AppendPrefrontal(m.pendingPrefrontal, agent.FormatWritesSummary(appliedWrites))
 		agent.AppendPrefrontal(m.pendingPrefrontal, agent.FormatDeletesSummary(appliedDeletes))
@@ -228,6 +228,9 @@ func applyPending(m *tuiModel, always bool) tea.Cmd {
 	}
 	for _, p := range appliedPatches {
 		m.appendAction("PATCH: " + p.Path)
+	}
+	for _, p := range failedPatches {
+		m.appendAction("PATCH FAILED: " + p.Path + " (" + p.Reason + ")")
 	}
 	if always {
 		m.appendAction("CHANGES AUTO-APPLY ENABLED")
