@@ -72,6 +72,7 @@ type tuiModel struct {
 	readRequestDepth  int
 	readReprompted    bool
 	expectReadLines   bool
+	mentionReadRerun  bool
 	suggestIndex      int
 	choiceActive      bool
 	choiceKind        string
@@ -224,10 +225,10 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !m.expectReadLines && mentionsReadInProse(msg.res.LLMOutput) {
 			readIgnored = true
 		}
+		mentions := agent.ExtractFileMentions(m.lastPrompt)
 		if m.expectReadLines {
 			if len(readReq) == 0 {
 				m.expectReadLines = false
-				mentions := agent.ExtractFileMentions(m.lastPrompt)
 				if len(mentions) > 0 {
 					if m.allowReadAll {
 						readReq = mentions
@@ -248,6 +249,19 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			m.expectReadLines = false
+		}
+		if len(readReq) == 0 && len(mentions) > 0 && !m.allowReadAll && !m.denyReadAll {
+			m.pendingPrompt = m.lastPrompt
+			m.pendingReadPaths = mentions
+			m.appendPermission("READ FILES FROM PROMPT? Choose an option:")
+			m.appendChoice("read", "Choose:", []string{"/yes allow for session", "/no deny for session", "/always always allow"})
+			return m, nil
+		}
+		if len(readReq) == 0 && len(mentions) > 0 && m.allowReadAll && !m.mentionReadRerun {
+			m.mentionReadRerun = true
+			m.lastReadPaths = mentions
+			m.running = true
+			return m, startAgentStream(&m, m.lastPrompt, true, m.allowWriteAll && !m.denyWriteAll, mentions)
 		}
 		if len(readReq) > 0 && m.denyReadAll {
 			m.appendAction("READ DENIED (session)")
@@ -274,6 +288,16 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		if len(readReq) == 0 && len(mentions) > 0 && !m.allowReadAll && !m.denyReadAll {
+			if len(msg.res.ProposedWrites) > 0 || len(msg.res.ProposedDeletes) > 0 || len(msg.res.ProposedPatches) > 0 {
+				m.pendingPrompt = m.lastPrompt
+				m.pendingReadPaths = mentions
+				m.appendPermission("READ FILES FROM PROMPT? Choose an option:")
+				m.appendChoice("read", "Choose:", []string{"/yes allow for session", "/no deny for session", "/always always allow"})
+				return m, nil
+			}
+		}
+
 		if choice := parseChoiceBlock(msg.res.LLMOutput); choice != nil {
 			m.appendChoice("model", choice.question, choice.options)
 			return m, nil
@@ -286,7 +310,6 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.running = true
 				return m, startAgentStream(&m, readOnlyPrompt(m.lastPrompt), m.allowReadAll, m.allowWriteAll && !m.denyWriteAll, nil)
 			}
-			mentions := agent.ExtractFileMentions(m.lastPrompt)
 			if len(mentions) > 0 {
 				if m.allowReadAll {
 					readIgnored = false
