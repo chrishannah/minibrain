@@ -50,6 +50,13 @@ func renderHistoryLine(h historyEntry, viewportWidth int, actionStyle, secondary
 		}
 		bubble := bubbleStyle.Render(h.text)
 		return lipgloss.NewStyle().Width(w).Align(lipgloss.Left).Render(actionStyle.Render(bubble))
+	case "raw":
+		bubbleStyle := lipgloss.NewStyle().Width(contentWidth).Align(lipgloss.Left)
+		if h.bold {
+			bubbleStyle = bubbleStyle.Bold(true)
+		}
+		bubble := bubbleStyle.Render(h.text)
+		return lipgloss.NewStyle().Width(w).Align(lipgloss.Left).Render(secondaryStyle.Render(bubble))
 	case "choice":
 		bubbleStyle := lipgloss.NewStyle().Width(contentWidth).Align(lipgloss.Left)
 		if h.bold {

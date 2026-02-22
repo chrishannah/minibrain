@@ -76,7 +76,8 @@ func (m *tuiModel) appendUser(text string) {
 
 func (m *tuiModel) appendRunResult(res agent.Result) {
 	if m.showRaw && res.LLMOutput != "" {
-		m.appendAction("RAW RESPONSE:\n" + res.LLMOutput)
+		m.history = append(m.history, historyEntry{text: "RAW RESPONSE:\n" + res.LLMOutput, kind: "raw"})
+		m.refreshViewport()
 	}
 	if res.LLMOutput != "" {
 		thinking, final := splitThinkingFinal(res.LLMOutput)
