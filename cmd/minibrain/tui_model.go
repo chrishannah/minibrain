@@ -73,6 +73,7 @@ type tuiModel struct {
 	readReprompted    bool
 	expectReadLines   bool
 	mentionReadRerun  bool
+	patchReadRerun    bool
 	suggestIndex      int
 	choiceActive      bool
 	choiceKind        string
@@ -295,6 +296,30 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.appendPermission("READ FILES FROM PROMPT? Choose an option:")
 				m.appendChoice("read", "Choose:", []string{"/yes allow for session", "/no deny for session", "/always always allow"})
 				return m, nil
+			}
+		}
+
+		if len(readReq) == 0 && len(msg.res.ProposedPatches) > 0 {
+			var patchPaths []string
+			for _, p := range msg.res.ProposedPatches {
+				if strings.TrimSpace(p.Path) != "" {
+					patchPaths = append(patchPaths, p.Path)
+				}
+			}
+			if len(patchPaths) > 0 {
+				if m.allowReadAll && !m.patchReadRerun {
+					m.patchReadRerun = true
+					m.lastReadPaths = patchPaths
+					m.running = true
+					return m, startAgentStream(&m, m.lastPrompt, true, m.allowWriteAll && !m.denyWriteAll, patchPaths)
+				}
+				if !m.allowReadAll && !m.denyReadAll {
+					m.pendingPrompt = m.lastPrompt
+					m.pendingReadPaths = patchPaths
+					m.appendPermission("READ FILES FOR PATCHES? Choose an option:")
+					m.appendChoice("read", "Choose:", []string{"/yes allow for session", "/no deny for session", "/always always allow"})
+					return m, nil
+				}
 			}
 		}
 
