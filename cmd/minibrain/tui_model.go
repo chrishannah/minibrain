@@ -74,6 +74,7 @@ type tuiModel struct {
 	expectReadLines   bool
 	mentionReadRerun  bool
 	patchReadRerun    bool
+	patchFormatRetry  bool
 	suggestIndex      int
 	choiceActive      bool
 	choiceKind        string
@@ -301,10 +302,26 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if len(readReq) == 0 && len(msg.res.ProposedPatches) > 0 {
 			var patchPaths []string
+			invalidPatch := false
 			for _, p := range msg.res.ProposedPatches {
 				if strings.TrimSpace(p.Path) != "" {
 					patchPaths = append(patchPaths, p.Path)
 				}
+				if !agent.HasValidHunks(p.Patch) {
+					invalidPatch = true
+				}
+			}
+			if invalidPatch {
+				if !m.patchFormatRetry {
+					m.patchFormatRetry = true
+					m.running = true
+					return m, startAgentStream(&m, patchFormatPrompt(m.lastPrompt), m.allowReadAll, m.allowWriteAll && !m.denyWriteAll, m.lastReadPaths)
+				}
+				m.appendAction(formatAction(ActionPatchFailed, "invalid diff format (missing @@ -a,b +c,d @@ hunks)"))
+				m.appendAction(formatAction(ActionInfo, "Use /retry to try again"))
+				m.stats = msg.res.Memory
+				m.usage = usageFromConfig()
+				return m, nil
 			}
 			if len(patchPaths) > 0 {
 				if m.allowReadAll && !m.patchReadRerun {

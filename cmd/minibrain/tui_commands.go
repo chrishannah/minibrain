@@ -141,6 +141,14 @@ func readOnlyPrompt(original string) string {
 	return "You requested file reads in prose. Respond only with READ <path> lines, no other text.\n\nOriginal request:\n" + trim
 }
 
+func patchFormatPrompt(original string) string {
+	trim := strings.TrimSpace(original)
+	if trim == "" {
+		return "Return only a valid unified diff with @@ -a,b +c,d @@ hunks and context lines. No other text."
+	}
+	return "Your PATCH was invalid. Return only a valid unified diff with @@ -a,b +c,d @@ hunks and context lines. No other text.\n\nOriginal request:\n" + trim
+}
+
 func mentionsReadInProse(s string) bool {
 	lower := strings.ToLower(s)
 	if strings.Contains(lower, "\nread ") || strings.HasPrefix(strings.TrimSpace(lower), "read ") {
@@ -404,6 +412,7 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 				m.expectReadLines = false
 				m.mentionReadRerun = false
 				m.patchReadRerun = false
+				m.patchFormatRetry = false
 				m.lastReadPaths = paths
 				return startAgentStream(m, p, true, m.allowWriteAll && !m.denyWriteAll, paths)
 			}
@@ -411,6 +420,7 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 			m.expectReadLines = false
 			m.mentionReadRerun = false
 			m.patchReadRerun = false
+			m.patchFormatRetry = false
 			return startAgentStream(m, p, true, m.allowWriteAll && !m.denyWriteAll, nil)
 		case "/always":
 			m.allowReadAll = true
@@ -432,6 +442,7 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 				m.expectReadLines = false
 				m.mentionReadRerun = false
 				m.patchReadRerun = false
+				m.patchFormatRetry = false
 				m.lastReadPaths = paths
 				return startAgentStream(m, p, true, m.allowWriteAll && !m.denyWriteAll, paths)
 			}
@@ -439,6 +450,7 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 			m.expectReadLines = false
 			m.mentionReadRerun = false
 			m.patchReadRerun = false
+			m.patchFormatRetry = false
 			return startAgentStream(m, p, true, m.allowWriteAll && !m.denyWriteAll, nil)
 		case "/no":
 			m.allowReadAll = false
@@ -532,6 +544,7 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 			m.expectReadLines = false
 			m.mentionReadRerun = false
 			m.patchReadRerun = false
+			m.patchFormatRetry = false
 			m.choiceActive = false
 			m.choiceKind = ""
 			m.choiceIndex = 0
@@ -575,6 +588,7 @@ func submitPrompt(m *tuiModel, prompt string) tea.Cmd {
 	m.expectReadLines = false
 	m.mentionReadRerun = false
 	m.patchReadRerun = false
+	m.patchFormatRetry = false
 	m.lastReadPaths = nil
 	return startAgentStream(m, prompt, m.allowReadAll, m.allowWriteAll && !m.denyWriteAll, nil)
 }

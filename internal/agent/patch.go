@@ -105,6 +105,10 @@ func parseHunks(patch string) []hunk {
 	return hunks
 }
 
+func HasValidHunks(patch string) bool {
+	return len(parseHunks(patch)) > 0
+}
+
 func parseInt(s string) int {
 	v := 0
 	for _, r := range s {
